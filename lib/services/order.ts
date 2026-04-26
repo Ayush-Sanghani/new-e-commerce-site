@@ -1,0 +1,443 @@
+import { randomBytes } from "node:crypto";
+import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { prisma } from "@/lib/db";
+import { effectiveUnitPriceInr, rupeesToPaise } from "@/lib/pricing";
+import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
+
+const MIN_CART_QUANTITY = 1;
+
+const productForOrder = {
+  id: true,
+  title: true,
+  thumbnail: true,
+  price: true,
+  discountPercentage: true,
+  sku: true,
+  stock: true,
+} as const;
+
+function generateOrderNumber(): string {
+  const y = new Date().getFullYear();
+  return `ORD-${y}-${randomBytes(6).toString("hex")}`;
+}
+
+export type CreateOrderFromCartInput = {
+  userId: string;
+  shippingAddress?: Prisma.InputJsonValue;
+  billingAddress?: Prisma.InputJsonValue;
+};
+
+export type CreateOrderFromCartResult =
+  | {
+      ok: true;
+      data: {
+        orderId: string;
+        orderNumber: string;
+        amount: number;
+        currency: string;
+        razorpayOrderId: string;
+        keyId: string;
+      };
+    }
+  | { ok: false; error: "empty_cart" }
+  | { ok: false; error: "cart_not_found" }
+  | {
+      ok: false;
+      error: "insufficient_stock";
+      productId: string;
+      max: number;
+    }
+  | {
+      ok: false;
+      error: "minimum_quantity";
+      productId: string;
+      min: number;
+    }
+  | {
+      ok: false;
+      error: "razorpay_failed";
+      orderId: string;
+      orderNumber: string;
+      message: string;
+    };
+
+/**
+ * Option A: persist Order + OrderItems + Payment (pending), then create Razorpay Order, then set `razorpayOrderId`.
+ */
+export async function createOrderFromCart(
+  input: CreateOrderFromCartInput
+): Promise<CreateOrderFromCartResult> {
+  const cart = await prisma.cart.findUnique({
+    where: { userId: input.userId },
+    include: {
+      items: {
+        include: { product: { select: productForOrder } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!cart) {
+    return { ok: false, error: "cart_not_found" };
+  }
+  if (cart.items.length === 0) {
+    return { ok: false, error: "empty_cart" };
+  }
+
+  type Line = {
+    productId: string;
+    quantity: number;
+    unitPrice: Prisma.Decimal;
+    title: string;
+    sku: string;
+    thumbnail: string | null;
+    lineTotal: Prisma.Decimal;
+  };
+
+  const lines: Line[] = [];
+
+  for (const item of cart.items) {
+    const p = item.product;
+    if (item.quantity > p.stock) {
+      return { ok: false, error: "insufficient_stock", productId: p.id, max: p.stock };
+    }
+    if (item.quantity < MIN_CART_QUANTITY) {
+      return {
+        ok: false,
+        error: "minimum_quantity",
+        productId: p.id,
+        min: MIN_CART_QUANTITY,
+      };
+    }
+
+    const unitPrice = effectiveUnitPriceInr(p);
+    const lineTotal = unitPrice.mul(item.quantity).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+    lines.push({
+      productId: p.id,
+      quantity: item.quantity,
+      unitPrice,
+      title: p.title,
+      sku: p.sku,
+      thumbnail: p.thumbnail,
+      lineTotal,
+    });
+  }
+
+  let subtotal = new Prisma.Decimal(0);
+  for (const line of lines) {
+    subtotal = subtotal.add(line.lineTotal);
+  }
+  subtotal = subtotal.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+  const tax = new Prisma.Decimal(0);
+  const shipping = new Prisma.Decimal(0);
+  const discount = new Prisma.Decimal(0);
+  const total = subtotal.add(tax).add(shipping).sub(discount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+  if (total.lte(0)) {
+    return { ok: false, error: "empty_cart" };
+  }
+
+  const amountPaise = rupeesToPaise(total);
+  if (amountPaise < 1) {
+    return { ok: false, error: "empty_cart" };
+  }
+
+  const orderNumber = generateOrderNumber();
+
+  const { orderId } = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.create({
+      data: {
+        orderNumber,
+        userId: input.userId,
+        status: OrderStatus.pending_payment,
+        currency: "INR",
+        subtotal,
+        tax,
+        shipping,
+        discount,
+        total,
+        shippingAddress: input.shippingAddress ?? undefined,
+        billingAddress: input.billingAddress ?? undefined,
+        items: {
+          create: lines.map((line) => ({
+            productId: line.productId,
+            title: line.title,
+            sku: line.sku,
+            thumbnail: line.thumbnail,
+            unitPrice: line.unitPrice,
+            quantity: line.quantity,
+          })),
+        },
+        payments: {
+          create: {
+            amount: total,
+            currency: "INR",
+            status: PaymentStatus.pending,
+            provider: "razorpay",
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    return { orderId: order.id };
+  });
+
+  const rz = getRazorpay();
+  try {
+    const receipt = orderNumber.slice(0, 40);
+    const rzOrder = await rz.orders.create({
+      amount: amountPaise,
+      currency: "INR",
+      receipt,
+      notes: {
+        internalOrderId: orderId,
+      },
+    });
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { razorpayOrderId: rzOrder.id },
+    });
+
+    return {
+      ok: true,
+      data: {
+        orderId,
+        orderNumber,
+        amount: amountPaise,
+        currency: "INR",
+        razorpayOrderId: rzOrder.id,
+        keyId: getRazorpayKeyId(),
+      },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Razorpay order creation failed";
+    return {
+      ok: false,
+      error: "razorpay_failed",
+      orderId,
+      orderNumber,
+      message,
+    };
+  }
+}
+
+export type VerifyOrderPaymentInput = {
+  userId: string;
+  orderId: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+};
+
+export type VerifyOrderPaymentResult =
+  | {
+      ok: true;
+      data: {
+        orderId: string;
+        orderNumber: string;
+        orderStatus: OrderStatus;
+        paymentStatus: PaymentStatus;
+      };
+    }
+  | { ok: false; error: "order_not_found" }
+  | { ok: false; error: "order_mismatch" }
+  | { ok: false; error: "invalid_signature" }
+  | { ok: false; error: "payment_not_found" }
+  | { ok: false; error: "payment_mismatch" };
+
+export async function verifyOrderPayment(
+  input: VerifyOrderPaymentInput
+): Promise<VerifyOrderPaymentResult> {
+  const order = await prisma.order.findFirst({
+    where: { id: input.orderId, userId: input.userId },
+    include: {
+      payments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  if (!order) {
+    return { ok: false, error: "order_not_found" };
+  }
+
+  if (!order.razorpayOrderId || order.razorpayOrderId !== input.razorpayOrderId) {
+    return { ok: false, error: "order_mismatch" };
+  }
+
+  // Idempotent success if already paid and a captured payment is present.
+  const latestPayment = order.payments[0];
+  if (order.status === OrderStatus.paid && latestPayment?.status === PaymentStatus.captured) {
+    return {
+      ok: true,
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        orderStatus: order.status,
+        paymentStatus: latestPayment.status,
+      },
+    };
+  }
+
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    throw new Error("Missing RAZORPAY_KEY_SECRET");
+  }
+
+  const payload = `${input.razorpayOrderId}|${input.razorpayPaymentId}`;
+  const generated = createHmac("sha256", keySecret).update(payload).digest("hex");
+  const generatedBuf = Buffer.from(generated);
+  const receivedBuf = Buffer.from(input.razorpaySignature);
+  if (generatedBuf.length !== receivedBuf.length || !timingSafeEqual(generatedBuf, receivedBuf)) {
+    return { ok: false, error: "invalid_signature" };
+  }
+
+  const rz = getRazorpay();
+  const payment = await rz.payments.fetch(input.razorpayPaymentId);
+  if (!payment || typeof payment !== "object") {
+    return { ok: false, error: "payment_not_found" };
+  }
+
+  const paymentOrderId = String((payment as { order_id?: string }).order_id ?? "");
+  const paymentAmount = Number((payment as { amount?: number }).amount ?? -1);
+  const paymentStatus = String((payment as { status?: string }).status ?? "");
+  const paymentCaptured = Boolean((payment as { captured?: boolean }).captured);
+  const expectedAmount = rupeesToPaise(order.total);
+
+  const isCapturedLike = paymentStatus === "captured" || paymentCaptured === true;
+  if (
+    paymentOrderId !== input.razorpayOrderId ||
+    paymentAmount !== expectedAmount ||
+    !isCapturedLike
+  ) {
+    return { ok: false, error: "payment_mismatch" };
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const paymentRow = await tx.payment.findFirst({
+      where: { orderId: order.id },
+      orderBy: { createdAt: "desc" },
+    });
+    if (paymentRow) {
+      await tx.payment.update({
+        where: { id: paymentRow.id },
+        data: {
+          status: PaymentStatus.captured,
+          razorpayPaymentId: input.razorpayPaymentId,
+        },
+      });
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: OrderStatus.paid },
+    });
+
+    const cart = await tx.cart.findUnique({ where: { userId: input.userId } });
+    if (cart) {
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    }
+
+    const updatedOrder = await tx.order.findUniqueOrThrow({
+      where: { id: order.id },
+      include: {
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    return updatedOrder;
+  });
+
+  return {
+    ok: true,
+    data: {
+      orderId: updated.id,
+      orderNumber: updated.orderNumber,
+      orderStatus: updated.status,
+      paymentStatus: updated.payments[0]?.status ?? PaymentStatus.captured,
+    },
+  };
+}
+
+type RazorpayWebhookPayment = {
+  id: string;
+  order_id: string;
+  amount: number;
+  status?: string;
+  captured?: boolean | number;
+};
+
+export type ProcessRazorpayWebhookResult =
+  | { ok: true; ignored: "order_not_found" | "unsupported_event" | "already_processed" }
+  | { ok: true; updated: "captured" | "failed"; orderId: string }
+  | { ok: false; error: "payment_mismatch" };
+
+export async function processRazorpayWebhook(
+  event: string,
+  payment: RazorpayWebhookPayment
+): Promise<ProcessRazorpayWebhookResult> {
+  const order = await prisma.order.findUnique({
+    where: { razorpayOrderId: payment.order_id },
+    include: { payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+
+  if (!order) {
+    return { ok: true, ignored: "order_not_found" };
+  }
+
+  const expectedAmount = rupeesToPaise(order.total);
+  if (payment.amount !== expectedAmount) {
+    return { ok: false, error: "payment_mismatch" };
+  }
+
+  const latestPayment = order.payments[0];
+
+  if (event === "payment.captured") {
+    if (order.status === OrderStatus.paid && latestPayment?.status === PaymentStatus.captured) {
+      return { ok: true, ignored: "already_processed" };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const paymentRow = await tx.payment.findFirst({
+        where: { orderId: order.id },
+        orderBy: { createdAt: "desc" },
+      });
+      if (paymentRow) {
+        await tx.payment.update({
+          where: { id: paymentRow.id },
+          data: {
+            status: PaymentStatus.captured,
+            razorpayPaymentId: payment.id,
+          },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: OrderStatus.paid },
+      });
+    });
+
+    return { ok: true, updated: "captured", orderId: order.id };
+  }
+
+  if (event === "payment.failed") {
+    if (latestPayment?.status === PaymentStatus.failed) {
+      return { ok: true, ignored: "already_processed" };
+    }
+
+    await prisma.payment.updateMany({
+      where: { orderId: order.id, status: { not: PaymentStatus.captured } },
+      data: {
+        status: PaymentStatus.failed,
+      },
+    });
+
+    return { ok: true, updated: "failed", orderId: order.id };
+  }
+
+  return { ok: true, ignored: "unsupported_event" };
+}

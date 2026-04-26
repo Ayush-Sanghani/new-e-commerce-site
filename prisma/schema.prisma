@@ -1,0 +1,281 @@
+// Prisma schema – use one of: postgresql, mysql, sqlite, sqlserver
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(user)
+  createdAt DateTime @default(now())
+  cart      Cart?
+  orders    Order[]
+  profile   UserProfile?
+}
+
+model UserProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// -----------------------------------------------
+// Product domain
+// -----------------------------------------------
+
+model Category {
+  id    String    @id @default(cuid())
+  name  String
+  slug  String    @unique
+  products Product[]
+
+  @@index([slug])
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  name     String
+  products Product[]
+
+  @@index([name])
+}
+
+model Tag {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  products ProductTag[]
+
+  @@index([name])
+}
+
+model Product {
+  id                    String    @id @default(cuid())
+  title                 String
+  description           String?
+  categoryId            String
+  category              Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  price                 Decimal    @db.Decimal(10, 2)
+  discountPercentage    Decimal    @db.Decimal(5, 2) @default(0)
+  rating                Decimal?   @db.Decimal(3, 2)
+  stock                 Int        @default(0)
+  sku                   String     @unique
+  weight                Decimal?   @db.Decimal(10, 2)
+  width                 Decimal?   @db.Decimal(10, 2)
+  height                Decimal?   @db.Decimal(10, 2)
+  depth                 Decimal?   @db.Decimal(10, 2)
+  warrantyInformation   String?
+  shippingInformation   String?
+  availabilityStatus    String     @default("In Stock")
+  returnPolicy          String?
+  minimumOrderQuantity  Int        @default(1)
+  thumbnail             String?
+  barcode               String?
+  qrCode                String?
+  brandId               String?
+  brand                 Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  images     ProductImage[]
+  tags       ProductTag[]
+  reviews    Review[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([sku])
+  @@index([createdAt])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+model ProductTag {
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+}
+
+model Review {
+  id             String   @id @default(cuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating         Int
+  comment        String?
+  reviewerName   String
+  reviewerEmail  String
+  createdAt      DateTime @default(now())
+
+  @@index([productId])
+}
+
+// -----------------------------------------------
+// Cart (server-side; guest carts use sessionId)
+// -----------------------------------------------
+
+model Cart {
+  id        String     @id @default(cuid())
+  /// Set for authenticated users; mutually exclusive with sessionId
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Opaque guest key from HTTP-only cookie (or similar); mutually exclusive with userId
+  sessionId String?    @unique
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([sessionId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+// -----------------------------------------------
+// Orders & payments (Razorpay)
+// -----------------------------------------------
+
+enum OrderStatus {
+  /// Checkout created; awaiting Razorpay / client completion
+  pending_payment
+  /// Payment captured (verified or reconciled)
+  paid
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  /// Record created; Razorpay payment id may not exist yet
+  pending
+  captured
+  failed
+  refunded
+}
+
+model Order {
+  id     String @id @default(cuid())
+  /// Human-readable reference (e.g. ORD-2026-000042); generate in application code
+  orderNumber String @unique
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  status OrderStatus @default(pending_payment)
+
+  currency String @default("INR")
+
+  subtotal Decimal @db.Decimal(10, 2)
+  tax      Decimal @db.Decimal(10, 2) @default(0)
+  shipping Decimal @db.Decimal(10, 2) @default(0)
+  discount Decimal @db.Decimal(10, 2) @default(0)
+  total    Decimal @db.Decimal(10, 2)
+
+  /// Set when your server creates a Razorpay Order (Orders API)
+  razorpayOrderId String? @unique
+
+  /// Snapshot JSON for delivery; optional billing if same as shipping
+  shippingAddress Json?
+  billingAddress  Json?
+
+  items    OrderItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  /// Copied at order time so history stays stable if catalog changes
+  title     String
+  sku       String
+  thumbnail String?
+  unitPrice Decimal @db.Decimal(10, 2)
+  quantity  Int
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// e.g. "razorpay" — keeps room for other providers later
+  provider String @default("razorpay")
+
+  /// Razorpay payment id once known; unique when set
+  razorpayPaymentId String? @unique
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("INR")
+
+  status PaymentStatus @default(pending)
+
+  /// e.g. card, upi, netbanking — from Razorpay when available
+  method String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
