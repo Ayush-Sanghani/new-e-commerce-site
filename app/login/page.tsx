@@ -61,7 +61,7 @@ function LoginForm() {
         router.push("/home");
         router.refresh();
       } else {
-        setServerError(result.message || "Login failed. Please try again.");
+        setServerError(result.error || result.message || "Login failed. Please try again.");
       }
     } catch {
       setServerError("Network error. Please check your connection.");
