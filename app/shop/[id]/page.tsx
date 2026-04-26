@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { categoryGroups } from "@/components/home/data";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeHeader } from "@/components/home/home-header";
@@ -17,14 +17,13 @@ type ProductDetailPageProps = {
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) redirect("/login");
-
-  let payload;
-  try {
-    payload = await verifyToken(token);
-  } catch {
-    redirect("/login");
+  let payload: { sub: string; email?: string } | null = null;
+  if (token) {
+    try {
+      payload = await verifyToken(token);
+    } catch {
+      payload = null;
+    }
   }
 
   const { id } = await params;
@@ -59,13 +58,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     .slice(0, 3)
     .map((item) => mapRelatedRecord(item as Parameters<typeof mapRelatedRecord>[0]));
 
-  const displayName = payload.email?.split("@")[0] || "Guest";
-  const cart = await getCartForUser(payload.sub);
+  const displayName = payload?.email?.split("@")[0] || "Guest";
+  const cart = payload ? await getCartForUser(payload.sub) : null;
   const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
-      <HomeHeader displayName={displayName} categoryGroups={categoryGroups} cartCount={cartCount} />
+      <HomeHeader
+        displayName={displayName}
+        categoryGroups={categoryGroups}
+        cartCount={cartCount}
+        isAuthenticated={Boolean(payload)}
+      />
       <ProductDetailView product={product} relatedProducts={relatedProducts} />
       <HomeFooter />
     </div>

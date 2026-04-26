@@ -7,6 +7,7 @@ import { HomeButton } from "@/components/home/ui/button";
 import { Card } from "@/components/home/ui/card";
 import { useToast } from "@/components/ui/toast-provider";
 import { addToCart } from "@/lib/cart-client";
+import { formatInrFromUsd } from "@/lib/currency";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import type { ProductDetail, RelatedProduct } from "./types";
 
@@ -14,10 +15,6 @@ type ProductDetailViewProps = {
   product: ProductDetail;
   relatedProducts: RelatedProduct[];
 };
-
-function formatPrice(price: number) {
-  return `$${price.toFixed(2)}`;
-}
 
 function stars(rating: number) {
   const fullStars = Math.round(rating);
@@ -46,6 +43,12 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
 
     setIsAdding(true);
     const result = await addToCart(product.id, quantity);
+    if (result.requiresAuth) {
+      showToast(result.message, "error");
+      router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}`);
+      setIsAdding(false);
+      return;
+    }
     showToast(result.message, result.success ? "success" : "error");
     if (result.success) {
       notifyCartUpdated();
@@ -59,6 +62,12 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
   const handleAddRelatedToCart = async (productId: string) => {
     setAddingRelatedId(productId);
     const result = await addToCart(productId, 1);
+    if (result.requiresAuth) {
+      showToast(result.message, "error");
+      router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}`);
+      setAddingRelatedId(null);
+      return;
+    }
     showToast(result.message, result.success ? "success" : "error");
     if (result.success) {
       notifyCartUpdated();
@@ -117,10 +126,10 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
           </div>
 
           <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-blue-700">{formatPrice(product.price)}</p>
+            <p className="text-3xl font-bold text-blue-700">{formatInrFromUsd(product.price)}</p>
             {product.oldPrice ? (
               <p className="pb-1 text-sm text-slate-400 line-through">
-                {formatPrice(product.oldPrice)}
+                {formatInrFromUsd(product.oldPrice)}
               </p>
             ) : null}
           </div>
@@ -270,7 +279,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
                     {item.title}
                   </h4>
                 </Link>
-                <p className="text-lg font-bold text-blue-700">{formatPrice(item.price)}</p>
+                <p className="text-lg font-bold text-blue-700">{formatInrFromUsd(item.price)}</p>
                 <HomeButton
                   variant="dark"
                   className="w-full py-2.5 disabled:cursor-not-allowed disabled:opacity-60"

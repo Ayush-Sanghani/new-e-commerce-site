@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Card } from "@/components/home/ui/card";
 import { HomeButton } from "@/components/home/ui/button";
 import { addToCart } from "@/lib/cart-client";
+import { formatInrFromUsd } from "@/lib/currency";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import { useToast } from "@/components/ui/toast-provider";
 import type { ShopProduct } from "./types";
@@ -13,10 +14,6 @@ import type { ShopProduct } from "./types";
 type ProductCardProps = {
   product: ShopProduct;
 };
-
-function formatPrice(price: number) {
-  return `$${price.toFixed(2)}`;
-}
 
 function formatCategory(category: string) {
   return category.replaceAll("-", " ");
@@ -30,6 +27,12 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = async () => {
     setIsAdding(true);
     const result = await addToCart(product.id, 1);
+    if (result.requiresAuth) {
+      showToast(result.message, "error");
+      router.push(`/login?next=${encodeURIComponent("/shop")}`);
+      setIsAdding(false);
+      return;
+    }
     showToast(result.message, result.success ? "success" : "error");
     if (result.success) {
       notifyCartUpdated();
@@ -64,10 +67,12 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <p className="text-base font-bold text-blue-700 sm:text-lg">{formatPrice(product.price)}</p>
+          <p className="text-base font-bold text-blue-700 sm:text-lg">
+            {formatInrFromUsd(product.price)}
+          </p>
           {product.oldPrice ? (
             <p className="text-xs text-slate-400 line-through sm:text-sm">
-              {formatPrice(product.oldPrice)}
+              {formatInrFromUsd(product.oldPrice)}
             </p>
           ) : null}
         </div>

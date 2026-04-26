@@ -6,6 +6,7 @@ type HomeHeaderProps = {
   displayName: string;
   categoryGroups: CategoryGroup[];
   cartCount?: number;
+  isAuthenticated?: boolean;
 };
 
 function formatCartCount(count: number): string {
@@ -13,7 +14,12 @@ function formatCartCount(count: number): string {
   return String(count);
 }
 
-export function HomeHeader({ displayName, categoryGroups, cartCount = 0 }: HomeHeaderProps) {
+export function HomeHeader({
+  displayName,
+  categoryGroups,
+  cartCount = 0,
+  isAuthenticated = true,
+}: HomeHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -79,15 +85,34 @@ export function HomeHeader({ displayName, categoryGroups, cartCount = 0 }: HomeH
             ) : null}
           </a>
 
-          <Link
-            href="/account"
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-blue-50 text-sm text-blue-700 transition-colors hover:bg-blue-100 sm:inline-flex"
-            aria-label={`Open ${displayName} profile`}
-            title="My Account"
-          >
-            <span aria-hidden>👤</span>
-          </Link>
-          <LogoutButton />
+          {isAuthenticated ? (
+            <>
+              <Link
+                href="/account"
+                className="hidden h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-blue-50 text-sm text-blue-700 transition-colors hover:bg-blue-100 sm:inline-flex"
+                aria-label={`Open ${displayName} profile`}
+                title="My Account"
+              >
+                <span aria-hidden>👤</span>
+              </Link>
+              <LogoutButton />
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-neutral-100"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                Register
+              </Link>
+            </div>
+          )}
 
           <details className="relative md:hidden">
             <summary className="grid h-9 w-9 list-none place-items-center rounded-lg border border-neutral-200 text-slate-700">
@@ -101,9 +126,20 @@ export function HomeHeader({ displayName, categoryGroups, cartCount = 0 }: HomeH
                 <Link href="/shop" className="block transition-colors hover:text-slate-900">
                   Shop
                 </Link>
-                <Link href="/account" className="block transition-colors hover:text-slate-900">
-                  Account
-                </Link>
+                {isAuthenticated ? (
+                  <Link href="/account" className="block transition-colors hover:text-slate-900">
+                    Account
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login" className="block transition-colors hover:text-slate-900">
+                      Login
+                    </Link>
+                    <Link href="/register" className="block transition-colors hover:text-slate-900">
+                      Register
+                    </Link>
+                  </>
+                )}
                 <a href="#" className="block transition-colors hover:text-slate-900">
                   Contact
                 </a>
