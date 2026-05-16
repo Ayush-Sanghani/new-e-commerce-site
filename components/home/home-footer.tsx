@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function HomeFooter() {
   return (
     <footer className="mt-12 border-t border-neutral-200 bg-white">
@@ -16,7 +18,11 @@ export function HomeFooter() {
             <li><a href="#" className="hover:text-slate-800">About Us</a></li>
             <li><a href="#" className="hover:text-slate-800">Careers</a></li>
             <li><a href="#" className="hover:text-slate-800">Blog</a></li>
-            <li><a href="#" className="hover:text-slate-800">Contact</a></li>
+            <li>
+              <Link href="/contact" className="hover:text-slate-800">
+                Contact
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -26,7 +32,11 @@ export function HomeFooter() {
             <li><a href="#" className="hover:text-slate-800">My Account</a></li>
             <li><a href="#" className="hover:text-slate-800">Track Order</a></li>
             <li><a href="#" className="hover:text-slate-800">Wishlist</a></li>
-            <li><a href="#" className="hover:text-slate-800">Returns & Refunds</a></li>
+            <li>
+              <Link href="/return-refund-policy" className="hover:text-slate-800">
+                Returns & Refunds
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -44,7 +54,19 @@ export function HomeFooter() {
       <div className="border-t border-neutral-200">
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-2 px-4 py-5 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <p>© {new Date().getFullYear()} DummyMart. All rights reserved.</p>
-          <p>Privacy Policy • Terms & Conditions • Shipping Policy</p>
+          <p>
+            <Link href="/privacy-policy" className="hover:text-slate-800">
+              Privacy Policy
+            </Link>{" "}
+            •{" "}
+            <Link href="/terms-and-conditions" className="hover:text-slate-800">
+              Terms & Conditions
+            </Link>{" "}
+            •{" "}
+            <Link href="/return-refund-policy" className="hover:text-slate-800">
+              Return & Refund Policy
+            </Link>
+          </p>
         </div>
       </div>
     </footer>

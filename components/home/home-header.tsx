@@ -65,9 +65,9 @@ export function HomeHeader({
               </div>
             </div>
           </details>
-          <a href="#" className="transition-colors hover:text-slate-900">
+          <Link href="/contact" className="transition-colors hover:text-slate-900">
             Contact
-          </a>
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -140,9 +140,9 @@ export function HomeHeader({
                     </Link>
                   </>
                 )}
-                <a href="#" className="block transition-colors hover:text-slate-900">
+                <Link href="/contact" className="block transition-colors hover:text-slate-900">
                   Contact
-                </a>
+                </Link>
               </nav>
 
               <div className="mt-4 border-t border-neutral-200 pt-4">

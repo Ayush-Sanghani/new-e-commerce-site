@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/home/ui/card";
+import { formatInrFromUsd } from "@/lib/currency";
 import type { CartSummary } from "./types";
 
 type CartSummaryCardProps = {
@@ -8,10 +9,6 @@ type CartSummaryCardProps = {
   onCheckout?: () => void;
   checkoutLabel?: string;
 };
-
-function formatMoney(value: number) {
-  return `$${value.toFixed(2)}`;
-}
 
 export function CartSummaryCard({
   summary,
@@ -26,26 +23,26 @@ export function CartSummaryCard({
       <div className="space-y-2 text-sm">
         <div className="flex items-center justify-between text-slate-600">
           <span>Subtotal</span>
-          <span>{formatMoney(summary.subtotal)}</span>
+          <span>{formatInrFromUsd(summary.subtotal)}</span>
         </div>
         <div className="flex items-center justify-between text-slate-600">
           <span>Shipping</span>
-          <span>{summary.shipping === 0 ? "Free" : formatMoney(summary.shipping)}</span>
+          <span>{summary.shipping === 0 ? "Free" : formatInrFromUsd(summary.shipping)}</span>
         </div>
         <div className="flex items-center justify-between text-slate-600">
           <span>Discount</span>
-          <span>-{formatMoney(summary.discount)}</span>
+          <span>-{formatInrFromUsd(summary.discount)}</span>
         </div>
         <div className="flex items-center justify-between text-slate-600">
           <span>Tax</span>
-          <span>{formatMoney(summary.tax)}</span>
+          <span>{formatInrFromUsd(summary.tax)}</span>
         </div>
       </div>
 
       <div className="border-t border-neutral-200 pt-3">
         <div className="flex items-center justify-between text-base font-bold text-slate-900">
           <span>Total</span>
-          <span>{formatMoney(summary.total)}</span>
+          <span>{formatInrFromUsd(summary.total)}</span>
         </div>
       </div>
 
@@ -57,6 +54,22 @@ export function CartSummaryCard({
       >
         {checkoutLabel}
       </button>
+
+      <p className="text-xs leading-5 text-slate-500">
+        By proceeding to checkout, you agree to our{" "}
+        <Link href="/terms-and-conditions" className="font-medium text-slate-700 hover:text-slate-900">
+          Terms &amp; Conditions
+        </Link>
+        ,{" "}
+        <Link href="/privacy-policy" className="font-medium text-slate-700 hover:text-slate-900">
+          Privacy Policy
+        </Link>
+        , and{" "}
+        <Link href="/return-refund-policy" className="font-medium text-slate-700 hover:text-slate-900">
+          Return &amp; Refund Policy
+        </Link>
+        .
+      </p>
 
       <Link
         href="/shop"

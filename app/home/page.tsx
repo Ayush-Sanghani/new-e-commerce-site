@@ -1,42 +1,21 @@
-import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/jwt";
 import {
   categories,
-  categoryGroups,
   clientReviews,
 } from "@/components/home/data";
 import { CategorySection } from "@/components/home/category-section";
 import { ClientReviewSection } from "@/components/home/client-review-section";
 import { FeaturedProductsSection } from "@/components/home/featured-products-section";
 import { HeroSection } from "@/components/home/hero-section";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeHeader } from "@/components/home/home-header";
 import { NewArrivalsSection } from "@/components/home/new-arrivals-section";
 import { NewsletterSection } from "@/components/home/newsletter-section";
 import { ServiceFeaturesSection } from "@/components/home/service-features-section";
 import { mapToFeaturedProduct, mapToNewArrivalProduct } from "@/lib/home/product-mappers";
-import { getCartForUser } from "@/lib/services/cart";
 import { listProducts } from "@/lib/services/product-queries";
 import { defaultProductListQuery } from "@/lib/shop/listing-params";
 import type { FeaturedProduct, NewArrivalProduct } from "@/components/home/types";
 import type { HeroSlide } from "@/components/home/hero-section";
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-  let payload: { sub: string; email?: string } | null = null;
-  if (token) {
-    try {
-      payload = await verifyToken(token);
-    } catch {
-      payload = null;
-    }
-  }
-
-  const displayName = payload?.email?.split("@")[0] || "Guest";
-  const cart = payload ? await getCartForUser(payload.sub) : null;
-  const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
-
   const featuredQuery = {
     ...defaultProductListQuery(),
     sortKey: "rating" as const,
@@ -106,13 +85,6 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
-      <HomeHeader
-        displayName={displayName}
-        categoryGroups={categoryGroups}
-        cartCount={cartCount}
-        isAuthenticated={Boolean(payload)}
-      />
-
       <main className="w-full space-y-10 py-6 sm:space-y-14 sm:py-8 lg:py-10">
         <HeroSection slides={heroSlides} />
         <CategorySection categories={categories} />
@@ -124,7 +96,6 @@ export default async function HomePage() {
           <NewsletterSection />
         </div>
       </main>
-      <HomeFooter />
     </div>
   );
 }
