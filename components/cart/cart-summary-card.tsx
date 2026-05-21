@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/home/ui/card";
-import { formatInrFromUsd } from "@/lib/currency";
+import { formatInr } from "@/lib/pricing";
 import type { CartSummary } from "./types";
 
 type CartSummaryCardProps = {
@@ -23,27 +23,30 @@ export function CartSummaryCard({
       <div className="space-y-2 text-sm">
         <div className="flex items-center justify-between text-slate-600">
           <span>Subtotal</span>
-          <span>{formatInrFromUsd(summary.subtotal)}</span>
+          <span>{formatInr(summary.subtotal)}</span>
         </div>
         <div className="flex items-center justify-between text-slate-600">
           <span>Shipping</span>
-          <span>{summary.shipping === 0 ? "Free" : formatInrFromUsd(summary.shipping)}</span>
+          <span>{summary.shipping === 0 ? "Free" : formatInr(summary.shipping)}</span>
         </div>
+        {summary.discount > 0 ? (
+          <div className="flex items-center justify-between text-slate-600">
+            <span>Discount</span>
+            <span>-{formatInr(summary.discount)}</span>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between text-slate-600">
-          <span>Discount</span>
-          <span>-{formatInrFromUsd(summary.discount)}</span>
-        </div>
-        <div className="flex items-center justify-between text-slate-600">
-          <span>Tax</span>
-          <span>{formatInrFromUsd(summary.tax)}</span>
+          <span>Tax (GST)</span>
+          <span>{formatInr(summary.tax)}</span>
         </div>
       </div>
 
       <div className="border-t border-neutral-200 pt-3">
         <div className="flex items-center justify-between text-base font-bold text-slate-900">
           <span>Total</span>
-          <span>{formatInrFromUsd(summary.total)}</span>
+          <span>{formatInr(summary.total)}</span>
         </div>
+        <p className="mt-1 text-xs text-slate-500">Payable at checkout · {summary.currency}</p>
       </div>
 
       <button
@@ -77,8 +80,6 @@ export function CartSummaryCard({
       >
         Continue Shopping
       </Link>
-
-      <p className="text-xs text-slate-500">Final payable amount may update at checkout.</p>
     </Card>
   );
 }

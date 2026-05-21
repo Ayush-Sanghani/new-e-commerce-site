@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { mapApiCartToUiItems } from "@/components/cart/mappers";
+import { mapApiCartPayload } from "@/components/cart/mappers";
 import { CartPageView } from "@/components/cart/cart-page-view";
+import { EMPTY_CART_SUMMARY } from "@/components/cart/types";
 import { verifyToken } from "@/lib/jwt";
-import { getCartForUser } from "@/lib/services/cart";
+import { buildCartPayload, getCartForUser } from "@/lib/services/cart";
 
 export default async function CartPage() {
   const cookieStore = await cookies();
@@ -18,14 +19,13 @@ export default async function CartPage() {
     redirect("/login");
   }
 
-  const cart = await getCartForUser(payload.sub); 
-  const initialItems = mapApiCartToUiItems(
-    cart as Parameters<typeof mapApiCartToUiItems>[0]
-  );
+  const cart = await getCartForUser(payload.sub);
+  const built = buildCartPayload(cart);
+  const { items, summary } = built ? mapApiCartPayload(built) : { items: [], summary: EMPTY_CART_SUMMARY };
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
-      <CartPageView initialItems={initialItems} />
+      <CartPageView initialItems={items} initialSummary={summary} />
     </div>
   );
 }

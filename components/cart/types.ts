@@ -1,12 +1,17 @@
+import type { PRODUCT_CURRENCY } from "@/lib/pricing";
+
 export type CartItem = {
   id: string;
   productId: string;
   title: string;
-  category: string;
   sku: string;
   imageUrl: string;
-  unitPrice: number;
   quantity: number;
+  unitPrice: number;
+  listPrice: number;
+  discountPercentage: number;
+  lineTotal: number;
+  listLineTotal: number;
   maxQuantity: number;
 };
 
@@ -16,4 +21,14 @@ export type CartSummary = {
   discount: number;
   tax: number;
   total: number;
+  currency: typeof PRODUCT_CURRENCY;
+};
+
+export const EMPTY_CART_SUMMARY: CartSummary = {
+  subtotal: 0,
+  shipping: 0,
+  discount: 0,
+  tax: 0,
+  total: 0,
+  currency: "INR",
 };

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/home/ui/card";
+import { formatInr } from "@/lib/pricing";
 import type { CartItem } from "./types";
 
 type CartItemRowProps = {
@@ -10,12 +11,8 @@ type CartItemRowProps = {
   onRemove: (productId: string) => void;
 };
 
-function formatMoney(value: number) {
-  return `$${value.toFixed(2)}`;
-}
-
 export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: CartItemRowProps) {
-  const lineTotal = item.unitPrice * item.quantity;
+  const onSale = item.discountPercentage > 0 && item.listPrice > item.unitPrice;
 
   return (
     <Card as="article" className="p-4 sm:p-5">
@@ -31,25 +28,33 @@ export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: 
 
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{item.category}</p>
             <Link href={`/shop/${item.productId}`}>
               <h3 className="line-clamp-2 text-base font-semibold text-slate-900 hover:text-blue-700">
                 {item.title}
               </h3>
             </Link>
             <p className="text-xs text-slate-500">SKU: {item.sku}</p>
+            {onSale ? (
+              <p className="mt-1 text-xs font-medium text-emerald-700">
+                {Math.round(item.discountPercentage)}% off
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-700">
-              Unit Price: <span className="font-semibold">{formatMoney(item.unitPrice)}</span>
-            </p>
+            <div className="text-sm text-slate-700">
+              <span className="text-slate-500">Unit: </span>
+              <span className="font-semibold">{formatInr(item.unitPrice)}</span>
+              {onSale ? (
+                <span className="ml-2 text-slate-400 line-through">{formatInr(item.listPrice)}</span>
+              ) : null}
+            </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => onDecrease(item.productId)}
-                disabled={isBusy}
+                disabled={isBusy || item.quantity <= 1}
                 className="h-8 w-8 rounded-md border border-neutral-300 bg-white text-slate-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={`Decrease quantity of ${item.title}`}
               >
@@ -61,7 +66,7 @@ export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: 
               <button
                 type="button"
                 onClick={() => onIncrease(item.productId)}
-                disabled={isBusy}
+                disabled={isBusy || item.quantity >= item.maxQuantity}
                 className="h-8 w-8 rounded-md border border-neutral-300 bg-white text-slate-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={`Increase quantity of ${item.title}`}
               >
@@ -71,7 +76,14 @@ export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: 
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-blue-700">Line Total: {formatMoney(lineTotal)}</p>
+            <div className="text-sm font-semibold text-blue-700">
+              Line total: {formatInr(item.lineTotal)}
+              {onSale ? (
+                <span className="ml-2 text-xs font-normal text-slate-400 line-through">
+                  {formatInr(item.listLineTotal)}
+                </span>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={() => onRemove(item.productId)}

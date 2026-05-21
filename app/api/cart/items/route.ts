@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { addItemToCart, removeCartItemFromCart, updateCartItemQuantity } from "@/lib/services/cart";
-import { serializeProduct } from "@/lib/services/product-queries";
+import {
+  addItemToCart,
+  buildCartPayload,
+  removeCartItemFromCart,
+  updateCartItemQuantity,
+} from "@/lib/services/cart";
 import { addCartItemBodySchema } from "@/lib/validations/cart";
 
 /**
@@ -84,7 +88,7 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({
     success: true,
     message: "Cart updated.",
-    data: { cart: serializeProduct(result.cart) },
+    data: { cart: buildCartPayload(result.cart) },
   });
 }
 
@@ -126,7 +130,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Item removed from cart.",
-      data: { cart: serializeProduct(result.cart) },
+      data: { cart: buildCartPayload(result.cart) },
     });
   } catch (err) {
     console.error("DELETE /api/cart/items:", err);
@@ -206,6 +210,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     message: "Item added to cart.",
-    data: { cart: serializeProduct(result.cart) },
+    data: { cart: buildCartPayload(result.cart) },
   });
 }

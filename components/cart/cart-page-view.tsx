@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import type { CartPayload } from "@/lib/services/cart";
 import { CART_UPDATED_KEY, notifyCartUpdated } from "@/lib/cart-sync";
-import { mapApiCartToUiItems } from "./mappers";
+import { mapApiCartPayload } from "./mappers";
 import { CartEmptyState } from "./cart-empty-state";
 import { CartItemRow } from "./cart-item-row";
 import { CartSummaryCard } from "./cart-summary-card";
@@ -11,41 +12,44 @@ import type { CartItem, CartSummary } from "./types";
 
 type CartPageViewProps = {
   initialItems: CartItem[];
+  initialSummary: CartSummary;
 };
 
-function computeSummary(items: CartItem[]): CartSummary {
-  const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 40;
-  const discount = subtotal > 2500 ? 100 : 0;
-  const tax = Math.round(subtotal * 0.05 * 100) / 100;
-  const total = subtotal + shipping + tax - discount;
-  return { subtotal, shipping, discount, tax, total };
+type CartApiResponse = {
+  success?: boolean;
+  message?: string;
+  data?: { cart?: CartPayload | null };
+};
+
+function applyCartResponse(
+  cart: CartPayload | null | undefined,
+  setItems: (items: CartItem[]) => void,
+  setSummary: (summary: CartSummary) => void
+) {
+  const mapped = mapApiCartPayload(cart);
+  setItems(mapped.items);
+  setSummary(mapped.summary);
 }
 
-export function CartPageView({ initialItems }: CartPageViewProps) {
+export function CartPageView({ initialItems, initialSummary }: CartPageViewProps) {
   const [items, setItems] = useState<CartItem[]>(initialItems);
+  const [summary, setSummary] = useState<CartSummary>(initialSummary);
   const [isLoading, setIsLoading] = useState(true);
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-
-  const summary = useMemo(() => computeSummary(items), [items]);
 
   const reloadCart = async () => {
     setErrorMessage(null);
     setIsLoading(true);
     try {
       const res = await fetch("/api/cart", { method: "GET" });
-      const data = (await res.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { cart?: unknown };
-      };
+      const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
         setErrorMessage(data.message || "Unable to refresh cart.");
         return;
       }
-      setItems(mapApiCartToUiItems(data.data?.cart as Parameters<typeof mapApiCartToUiItems>[0]));
+      applyCartResponse(data.data?.cart, setItems, setSummary);
     } catch {
       setErrorMessage("Network error while refreshing cart.");
     } finally {
@@ -79,16 +83,12 @@ export function CartPageView({ initialItems }: CartPageViewProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, quantity }),
       });
-      const data = (await res.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { cart?: unknown };
-      };
+      const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
         setErrorMessage(data.message || "Unable to update cart item.");
         return;
       }
-      setItems(mapApiCartToUiItems(data.data?.cart as Parameters<typeof mapApiCartToUiItems>[0]));
+      applyCartResponse(data.data?.cart, setItems, setSummary);
       notifyCartUpdated();
     } catch {
       setErrorMessage("Network error while updating cart.");
@@ -104,16 +104,12 @@ export function CartPageView({ initialItems }: CartPageViewProps) {
       const res = await fetch(`/api/cart/items?productId=${encodeURIComponent(productId)}`, {
         method: "DELETE",
       });
-      const data = (await res.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { cart?: unknown };
-      };
+      const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
         setErrorMessage(data.message || "Unable to remove cart item.");
         return;
       }
-      setItems(mapApiCartToUiItems(data.data?.cart as Parameters<typeof mapApiCartToUiItems>[0]));
+      applyCartResponse(data.data?.cart, setItems, setSummary);
       notifyCartUpdated();
     } catch {
       setErrorMessage("Network error while removing cart item.");

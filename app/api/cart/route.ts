@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { getCartForUser } from "@/lib/services/cart";
-import { serializeProduct } from "@/lib/services/product-queries";
+import { buildCartPayload, getCartForUser } from "@/lib/services/cart";
 
 /**
  * GET /api/cart — current cart (logged-in only). Does not create a cart.
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Cart fetched.",
-      data: { cart: cart ? serializeProduct(cart) : null },
+      data: { cart: buildCartPayload(cart) },
     });
   } catch (err) {
     console.error("GET /api/cart:", err);

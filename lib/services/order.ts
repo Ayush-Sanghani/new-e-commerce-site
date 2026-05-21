@@ -2,7 +2,12 @@ import { randomBytes } from "node:crypto";
 import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { effectiveUnitPriceInr, rupeesToPaise } from "@/lib/pricing";
+import {
+  computeLineTotal,
+  computeOrderTotalsFromLines,
+  effectiveUnitPriceInr,
+  rupeesToPaise,
+} from "@/lib/pricing";
 import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 
 const MIN_CART_QUANTITY = 1;
@@ -112,7 +117,7 @@ export async function createOrderFromCart(
     }
 
     const unitPrice = effectiveUnitPriceInr(p);
-    const lineTotal = unitPrice.mul(item.quantity).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+    const lineTotal = computeLineTotal(unitPrice, item.quantity);
 
     lines.push({
       productId: p.id,
@@ -125,16 +130,9 @@ export async function createOrderFromCart(
     });
   }
 
-  let subtotal = new Prisma.Decimal(0);
-  for (const line of lines) {
-    subtotal = subtotal.add(line.lineTotal);
-  }
-  subtotal = subtotal.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-
-  const tax = new Prisma.Decimal(0);
-  const shipping = new Prisma.Decimal(0);
-  const discount = new Prisma.Decimal(0);
-  const total = subtotal.add(tax).add(shipping).sub(discount).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const { subtotal, tax, shipping, discount, total } = computeOrderTotalsFromLines(
+    lines.map((line) => ({ lineTotal: line.lineTotal }))
+  );
 
   if (total.lte(0)) {
     return { ok: false, error: "empty_cart" };
