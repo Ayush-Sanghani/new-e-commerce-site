@@ -4,6 +4,11 @@ import type {
   DummyJsonProductsResponse,
 } from "@/lib/types/dummyjson";
 
+/**
+ * Product.price in the database is list price in INR.
+ * DummyJSON returns USD-scale numbers — avoid re-seeding production after INR conversion.
+ */
+
 const DUMMYJSON_URL = "https://dummyjson.com/products";
 const LIMIT = 250;
 

@@ -1,3 +1,4 @@
+import { resolveCatalogPrices } from "@/lib/pricing";
 import type { RelatedProduct, ProductDetail } from "./types";
 
 type ProductRecord = {
@@ -30,6 +31,7 @@ type RelatedRecord = {
   title: string;
   category?: { name?: string | null } | null;
   price?: number | string | null;
+  discountPercentage?: number | string | null;
   images?: Array<{ url?: string | null }>;
   thumbnail?: string | null;
 };
@@ -51,12 +53,9 @@ function clampRating(value: number): number {
 }
 
 export function mapProductRecordToDetail(record: ProductRecord): ProductDetail {
-  const price = toNumber(record.price, 0);
+  const listPrice = toNumber(record.price, 0);
   const discountPercentage = toNumber(record.discountPercentage, 0);
-  const oldPrice =
-    discountPercentage > 0 && discountPercentage < 100
-      ? Math.round((price / (1 - discountPercentage / 100)) * 100) / 100
-      : undefined;
+  const { effectivePrice, oldPrice } = resolveCatalogPrices(listPrice, discountPercentage);
 
   const firstImage =
     record.images?.find((image) => image.url && image.url.trim())?.url?.trim() ??
@@ -76,7 +75,7 @@ export function mapProductRecordToDetail(record: ProductRecord): ProductDetail {
     id: record.id,
     title: record.title,
     category: record.category?.name?.trim() || "General",
-    price,
+    price: effectivePrice,
     oldPrice,
     rating,
     reviewCount,
@@ -112,18 +111,23 @@ export function mapProductRecordToDetail(record: ProductRecord): ProductDetail {
     deliveryInfo: [
       record.shippingInformation || "Standard delivery available.",
       record.returnPolicy || "Return policy details available at checkout.",
-      stock > 0 ? "Cash on Delivery may be available at checkout." : "Notify me when back in stock.",
+      stock > 0 ? "Secure online payment at checkout." : "Notify me when back in stock.",
     ],
     warranty: record.warrantyInformation || "Warranty details not specified.",
   };
 }
 
 export function mapRelatedRecord(record: RelatedRecord): RelatedProduct {
+  const listPrice = toNumber(record.price, 0);
+  const discountPercentage = toNumber(record.discountPercentage, 0);
+  const { effectivePrice, oldPrice } = resolveCatalogPrices(listPrice, discountPercentage);
+
   return {
     id: record.id,
     title: record.title,
     category: record.category?.name?.trim() || "General",
-    price: toNumber(record.price, 0),
+    price: effectivePrice,
+    oldPrice,
     imageUrl:
       record.images?.find((image) => image.url && image.url.trim())?.url?.trim() ||
       record.thumbnail?.trim() ||

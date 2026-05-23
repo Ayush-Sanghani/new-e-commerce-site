@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { AUTH_COOKIE_NAME } from "@/lib/auth-constants";
+import { attachAuthCookie } from "@/lib/auth-cookie";
+import { getPasswordLoginBlockMessage } from "@/lib/auth-password";
 import { prisma } from "@/lib/db";
-import { signToken } from "@/lib/jwt";
-const COOKIE_MAX_AGE_DAYS = 7;
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -28,17 +27,6 @@ function validateBody(body: unknown): { email: string; password: string } | { er
   return {
     email: email.trim().toLowerCase(),
     password,
-  };
-}
-
-function getCookieOptions(): { httpOnly: boolean; secure: boolean; sameSite: "lax" | "strict"; path: string; maxAge: number } {
-  const isProduction = process.env.NODE_ENV === "production";
-  return {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
-    path: "/",
-    maxAge: COOKIE_MAX_AGE_DAYS * 24 * 60 * 60,
   };
 }
 
@@ -72,19 +60,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const passwordValid = await bcrypt.compare(validated.password, user.password);
+    const passwordBlock = getPasswordLoginBlockMessage(user);
+    if (passwordBlock) {
+      return NextResponse.json({ success: false, error: passwordBlock }, { status: 401 });
+    }
+
+    const passwordValid = await bcrypt.compare(validated.password, user.password!);
     if (!passwordValid) {
       return NextResponse.json(
         { success: false, error: "Invalid email or password." },
         { status: 401 }
       );
     }
-
-    const token = await signToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
 
     const response = NextResponse.json({
       success: true,
@@ -98,12 +85,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const cookieOptions = getCookieOptions();
-    response.cookies.set(AUTH_COOKIE_NAME, token, {
-      ...cookieOptions,
-      maxAge: cookieOptions.maxAge,
-    });
-
+    await attachAuthCookie(response, user);
     return response;
   } catch (err) {
     if (err instanceof Error && err.message.includes("JWT_SECRET")) {

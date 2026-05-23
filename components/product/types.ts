@@ -21,6 +21,9 @@ export type RelatedProduct = {
   id: string;
   title: string;
   category: string;
+  /** Payable unit price in INR (after catalog discount). */
   price: number;
+  /** List/MRP when on sale. */
+  oldPrice?: number;
   imageUrl: string;
 };

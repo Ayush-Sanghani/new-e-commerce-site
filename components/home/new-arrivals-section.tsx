@@ -42,7 +42,9 @@ export function NewArrivalsSection({ products }: NewArrivalsSectionProps) {
 
               <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:mt-3 sm:gap-2">
                 <p className="text-base font-bold text-blue-700 sm:text-lg">{product.price}</p>
-                <p className="text-xs text-slate-400 line-through sm:text-sm">{product.oldPrice}</p>
+                {product.oldPrice ? (
+                  <p className="text-xs text-slate-400 line-through sm:text-sm">{product.oldPrice}</p>
+                ) : null}
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3">

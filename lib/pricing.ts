@@ -93,6 +93,35 @@ export function rupeesToPaise(rupees: Prisma.Decimal): number {
   return rupees.mul(100).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP).toNumber();
 }
 
+export type CatalogPrices = {
+  /** List/MRP in INR (DB `Product.price`). */
+  listPrice: number;
+  /** Payable unit price after catalog discount %. */
+  effectivePrice: number;
+  discountPercentage: number;
+  /** List price when on sale (for strikethrough); omitted when not discounted. */
+  oldPrice?: number;
+};
+
+/** Resolve list vs effective INR prices for catalog UI (shop, home, product pages). */
+export function resolveCatalogPrices(
+  listPrice: number,
+  discountPercentage: number
+): CatalogPrices {
+  const list = new Prisma.Decimal(listPrice);
+  const pct = new Prisma.Decimal(discountPercentage);
+  const effective = effectiveUnitPriceInr({ price: list, discountPercentage: pct });
+  const listRounded = roundInr(list);
+  const onSale = pct.gt(0) && pct.lt(100) && effective.lt(listRounded);
+
+  return {
+    listPrice: listRounded.toNumber(),
+    effectivePrice: effective.toNumber(),
+    discountPercentage: pct.toNumber(),
+    oldPrice: onSale ? listRounded.toNumber() : undefined,
+  };
+}
+
 /** Display INR amounts (values are already INR, not USD). */
 export function formatInr(amount: number | Prisma.Decimal): string {
   const value =

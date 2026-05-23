@@ -1,4 +1,5 @@
 import type { ShopProduct } from "@/components/shop/types";
+import { resolveCatalogPrices } from "@/lib/pricing";
 import { productListQuerySchema, type ProductListQuery } from "@/lib/validations/product-query";
 
 export type ShopCategoryChip = { id: string; name: string; slug: string };
@@ -123,12 +124,9 @@ type SerializedListItem = {
 };
 
 export function mapListItemToShopProduct(row: SerializedListItem): ShopProduct {
-  const price = Number(row.price);
+  const listPrice = Number(row.price);
   const disc = Number(row.discountPercentage ?? 0);
-  let oldPrice: number | undefined;
-  if (disc > 0 && disc < 100) {
-    oldPrice = Math.round((price / (1 - disc / 100)) * 100) / 100;
-  }
+  const { effectivePrice, oldPrice } = resolveCatalogPrices(listPrice, disc);
   const imageUrl =
     row.images?.[0]?.url?.trim() ||
     row.thumbnail?.trim() ||
@@ -138,7 +136,7 @@ export function mapListItemToShopProduct(row: SerializedListItem): ShopProduct {
     id: row.id,
     title: row.title,
     category: row.category.name,
-    price,
+    price: effectivePrice,
     oldPrice,
     rating: row.rating != null ? Number(row.rating) : 0,
     imageUrl,

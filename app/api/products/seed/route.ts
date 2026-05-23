@@ -1,14 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { seedProductsFromDummyJson } from "@/lib/services/product-seed";
 
 /**
- * POST /api/products/seed
- * Fetches products from https://dummyjson.com/products and upserts them
- * into the database with Category, Brand, Tag, ProductImage, and Review relations.
- *
- * In production, protect this route (e.g. admin-only or secret header).
+ * POST /api/products/seed — admin only.
+ * Fetches products from DummyJSON and upserts catalog data.
+ * Do not run on production after prices are stored as INR (overwrites with USD-scale values).
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if ("error" in auth) {
+    return NextResponse.json(
+      { success: false, message: auth.error, data: null },
+      { status: auth.status }
+    );
+  }
+
   try {
     const result = await seedProductsFromDummyJson();
 

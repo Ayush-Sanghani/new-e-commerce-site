@@ -7,7 +7,7 @@ import { HomeButton } from "@/components/home/ui/button";
 import { Card } from "@/components/home/ui/card";
 import { useToast } from "@/components/ui/toast-provider";
 import { addToCart } from "@/lib/cart-client";
-import { formatInrFromUsd } from "@/lib/currency";
+import { formatInr } from "@/lib/pricing";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import type { ProductDetail, RelatedProduct } from "./types";
 
@@ -126,10 +126,10 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
           </div>
 
           <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-blue-700">{formatInrFromUsd(product.price)}</p>
+            <p className="text-3xl font-bold text-blue-700">{formatInr(product.price)}</p>
             {product.oldPrice ? (
               <p className="pb-1 text-sm text-slate-400 line-through">
-                {formatInrFromUsd(product.oldPrice)}
+                {formatInr(product.oldPrice)}
               </p>
             ) : null}
           </div>
@@ -279,7 +279,12 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
                     {item.title}
                   </h4>
                 </Link>
-                <p className="text-lg font-bold text-blue-700">{formatInrFromUsd(item.price)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-lg font-bold text-blue-700">{formatInr(item.price)}</p>
+                  {item.oldPrice ? (
+                    <p className="text-sm text-slate-400 line-through">{formatInr(item.oldPrice)}</p>
+                  ) : null}
+                </div>
                 <HomeButton
                   variant="dark"
                   className="w-full py-2.5 disabled:cursor-not-allowed disabled:opacity-60"

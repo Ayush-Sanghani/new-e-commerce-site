@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Card } from "@/components/home/ui/card";
 import { HomeButton } from "@/components/home/ui/button";
 import { addToCart } from "@/lib/cart-client";
-import { formatInrFromUsd } from "@/lib/currency";
+import { formatInr } from "@/lib/pricing";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import { useToast } from "@/components/ui/toast-provider";
 import type { ShopProduct } from "./types";
@@ -68,11 +68,11 @@ export function ProductCard({ product }: ProductCardProps) {
         </Link>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <p className="text-base font-bold text-blue-700 sm:text-lg">
-            {formatInrFromUsd(product.price)}
+            {formatInr(product.price)}
           </p>
           {product.oldPrice ? (
             <p className="text-xs text-slate-400 line-through sm:text-sm">
-              {formatInrFromUsd(product.oldPrice)}
+              {formatInr(product.oldPrice)}
             </p>
           ) : null}
         </div>
