@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  buildShippingAddressFromProfile,
+  isShippingAddressComplete,
+  type MeProfileFields,
+} from "@/lib/checkout-shipping";
 import type { CartPayload } from "@/lib/services/cart";
 import { CART_UPDATED_KEY, notifyCartUpdated } from "@/lib/cart-sync";
 import { mapApiCartPayload } from "./mappers";
@@ -31,12 +37,23 @@ function applyCartResponse(
   setSummary(mapped.summary);
 }
 
+type MeApiResponse = {
+  success?: boolean;
+  message?: string;
+  data?: {
+    user: { name: string | null };
+    profile: MeProfileFields | null;
+  };
+};
+
 export function CartPageView({ initialItems, initialSummary }: CartPageViewProps) {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>(initialItems);
   const [summary, setSummary] = useState<CartSummary>(initialSummary);
   const [isLoading, setIsLoading] = useState(true);
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const reloadCart = async () => {
@@ -150,10 +167,33 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
     if (isCheckingOut) return;
 
     setErrorMessage(null);
+    setPendingOrderId(null);
     setIsCheckingOut(true);
 
     try {
-      const createRes = await fetch("/api/orders", { method: "POST" });
+      const meRes = await fetch("/api/me", { method: "GET" });
+      const meData = (await meRes.json()) as MeApiResponse;
+
+      if (!meRes.ok || !meData.success || !meData.data) {
+        setErrorMessage(meData.message || "Unable to load your profile for checkout.");
+        return;
+      }
+
+      const { user, profile } = meData.data;
+      if (!isShippingAddressComplete(user.name, profile)) {
+        setErrorMessage(
+          "Add your name and full shipping address in Account before checkout."
+        );
+        return;
+      }
+
+      const shippingAddress = buildShippingAddressFromProfile(user.name!, profile!);
+
+      const createRes = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingAddress }),
+      });
       const createData = (await createRes.json()) as {
         success?: boolean;
         message?: string;
@@ -167,6 +207,16 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       };
 
       if (!createRes.ok || !createData.success || !createData.data) {
+        const failedOrderId =
+          createData.data &&
+          typeof createData.data === "object" &&
+          "orderId" in createData.data &&
+          typeof (createData.data as { orderId?: string }).orderId === "string"
+            ? (createData.data as { orderId: string }).orderId
+            : null;
+        if (failedOrderId) {
+          setPendingOrderId(failedOrderId);
+        }
         setErrorMessage(createData.message || "Unable to create order.");
         return;
       }
@@ -178,8 +228,11 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       }
 
       const { orderId, amount, currency, razorpayOrderId, keyId } = createData.data;
+      setPendingOrderId(orderId);
 
-      const RazorpayCtor = (window as { Razorpay?: new (options: unknown) => { open: () => void } }).Razorpay;
+      const RazorpayCtor = (window as {
+        Razorpay?: new (options: unknown) => { open: () => void };
+      }).Razorpay;
       if (!RazorpayCtor) {
         setErrorMessage("Razorpay SDK is not available.");
         return;
@@ -213,12 +266,20 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
 
           if (!verifyRes.ok || !verifyData.success) {
             setErrorMessage(verifyData.message || "Payment verification failed.");
+            setPendingOrderId(orderId);
             return;
           }
 
           await reloadCart();
           notifyCartUpdated();
-          alert("Payment successful and order confirmed.");
+          setPendingOrderId(null);
+          router.push(`/orders/${orderId}?paid=1`);
+        },
+        modal: {
+          ondismiss: () => {
+            setErrorMessage("Payment cancelled.");
+            setPendingOrderId(orderId);
+          },
         },
       });
 
@@ -260,7 +321,23 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
 
       {!isLoading && errorMessage ? (
         <section className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {errorMessage}
+          <p>{errorMessage}</p>
+          {errorMessage.includes("shipping address") ? (
+            <Link
+              href="/account"
+              className="mt-2 inline-flex font-medium text-red-800 underline hover:text-red-950"
+            >
+              Update address in Account
+            </Link>
+          ) : null}
+          {pendingOrderId ? (
+            <Link
+              href={`/orders/${pendingOrderId}`}
+              className="mt-2 block font-medium text-red-800 underline hover:text-red-950"
+            >
+              View pending order
+            </Link>
+          ) : null}
         </section>
       ) : null}
 

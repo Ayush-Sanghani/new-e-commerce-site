@@ -8,6 +8,136 @@ import {
   effectiveUnitPriceInr,
   rupeesToPaise,
 } from "@/lib/pricing";
+
+function decimalToNumber(value: Prisma.Decimal): number {
+  return value.toNumber();
+}
+
+export type OrderListRow = {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  currency: string;
+  createdAt: string;
+  itemCount: number;
+};
+
+export type OrderDetailItemRow = {
+  id: string;
+  productId: string;
+  title: string;
+  sku: string;
+  thumbnail: string | null;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+};
+
+export type OrderDetailRow = {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderDetailItemRow[];
+  paymentStatus: PaymentStatus | null;
+  shippingAddress: Record<string, unknown> | null;
+};
+
+export async function listOrdersForUser(userId: string): Promise<OrderListRow[]> {
+  const orders = await prisma.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      subtotal: true,
+      tax: true,
+      shipping: true,
+      discount: true,
+      total: true,
+      currency: true,
+      createdAt: true,
+      _count: { select: { items: true } },
+    },
+  });
+
+  return orders.map((order) => ({
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    subtotal: decimalToNumber(order.subtotal),
+    tax: decimalToNumber(order.tax),
+    shipping: decimalToNumber(order.shipping),
+    discount: decimalToNumber(order.discount),
+    total: decimalToNumber(order.total),
+    currency: order.currency,
+    createdAt: order.createdAt.toISOString(),
+    itemCount: order._count.items,
+  }));
+}
+
+export async function getOrderForUser(
+  userId: string,
+  orderId: string
+): Promise<OrderDetailRow | null> {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    include: {
+      items: { orderBy: { createdAt: "asc" } },
+      payments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  if (!order) {
+    return null;
+  }
+
+  const shippingAddress =
+    order.shippingAddress &&
+    typeof order.shippingAddress === "object" &&
+    !Array.isArray(order.shippingAddress)
+      ? (order.shippingAddress as Record<string, unknown>)
+      : null;
+
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    subtotal: decimalToNumber(order.subtotal),
+    tax: decimalToNumber(order.tax),
+    shipping: decimalToNumber(order.shipping),
+    discount: decimalToNumber(order.discount),
+    total: decimalToNumber(order.total),
+    currency: order.currency,
+    createdAt: order.createdAt.toISOString(),
+    updatedAt: order.updatedAt.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      title: item.title,
+      sku: item.sku,
+      thumbnail: item.thumbnail,
+      unitPrice: decimalToNumber(item.unitPrice),
+      quantity: item.quantity,
+      lineTotal: decimalToNumber(computeLineTotal(item.unitPrice, item.quantity)),
+    })),
+    paymentStatus: order.payments[0]?.status ?? null,
+    shippingAddress,
+  };
+}
 import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 
 const MIN_CART_QUANTITY = 1;

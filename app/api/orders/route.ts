@@ -1,8 +1,36 @@
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { createOrderFromCart } from "@/lib/services/order";
+import { createOrderFromCart, listOrdersForUser } from "@/lib/services/order";
 import { createOrderBodySchema } from "@/lib/validations/order";
+
+/**
+ * GET /api/orders — list current user's orders (newest first).
+ */
+export async function GET(request: NextRequest) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return NextResponse.json(
+      { success: false, message: "Unauthorized. Sign in required.", data: null },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const orders = await listOrdersForUser(user.id);
+    return NextResponse.json({
+      success: true,
+      message: "Orders fetched.",
+      data: { orders },
+    });
+  } catch (err) {
+    console.error("GET /api/orders:", err);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch orders.", data: null },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * POST /api/orders — create order from cart + Razorpay order (Option A: DB first, then gateway).
