@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 import {
   computeLineTotal,
   computeOrderTotalsFromLines,
@@ -138,7 +139,6 @@ export async function getOrderForUser(
     shippingAddress,
   };
 }
-import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 
 const MIN_CART_QUANTITY = 1;
 
@@ -203,7 +203,7 @@ export type CreateOrderFromCartResult =
 export async function createOrderFromCart(
   input: CreateOrderFromCartInput
 ): Promise<CreateOrderFromCartResult> {
-  const cart = await prisma.cart.findUnique({
+  const cart =  await prisma.cart.findUnique({
     where: { userId: input.userId },
     include: {
       items: {
