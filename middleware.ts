@@ -6,7 +6,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
 
   
 
@@ -23,5 +27,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/register"],
+  matcher: ["/login", "/register", "/forgot-password", "/reset-password"],
 };

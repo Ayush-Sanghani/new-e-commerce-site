@@ -41,6 +41,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const resetSuccess = searchParams.get("reset") === "success";
   const googleError = getGoogleLoginErrorMessage(searchParams.get("error"));
 
   const {
@@ -155,6 +156,15 @@ function LoginForm() {
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                 <p className="text-emerald-700 text-sm font-medium">
                   Account created! Please sign in.
+                </p>
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <p className="text-emerald-700 text-sm font-medium">
+                  Password updated. Please sign in.
                 </p>
               </div>
             )}
@@ -289,12 +299,12 @@ function LoginForm() {
 
               {/* forgot password */}
               <div className="flex justify-end -mt-1">
-                <a
-                  href="#"
+                <Link
+                  href="/forgot-password"
                   className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                 >
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {/* submit */}
