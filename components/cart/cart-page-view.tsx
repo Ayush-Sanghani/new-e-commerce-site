@@ -13,6 +13,7 @@ import { CART_UPDATED_KEY, notifyCartUpdated } from "@/lib/cart-sync";
 import { mapApiCartPayload } from "./mappers";
 import { CartEmptyState } from "./cart-empty-state";
 import { CartItemRow } from "./cart-item-row";
+import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import { CartSummaryCard } from "./cart-summary-card";
 import type { CartItem, CartSummary } from "./types";
 
@@ -54,6 +55,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [isPendingOrderConflict, setIsPendingOrderConflict] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const reloadCart = async () => {
@@ -239,6 +241,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
 
     setErrorMessage(null);
     setPendingOrderId(null);
+    setIsPendingOrderConflict(false);
     setIsCheckingOut(true);
 
     try {
@@ -284,6 +287,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       if (createRes.status === 409 && createData.data?.code === "pending_order_exists") {
         const pending = createData.data;
         setPendingOrderId(pending.orderId ?? null);
+        setIsPendingOrderConflict(true);
         setErrorMessage(
           createData.message ||
             "You already have a pending order. Complete payment or open your order page."
@@ -380,12 +384,40 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
             </Link>
           ) : null}
           {pendingOrderId ? (
-            <Link
-              href={`/orders/${pendingOrderId}`}
-              className="mt-2 block font-medium text-red-800 underline hover:text-red-950"
-            >
-              Complete payment — view pending order
-            </Link>
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <Link
+                  href={`/orders/${pendingOrderId}`}
+                  className="font-medium text-red-800 underline hover:text-red-950"
+                >
+                  {isPendingOrderConflict
+                    ? "View pending order"
+                    : "Complete payment — view pending order"}
+                </Link>
+                {isPendingOrderConflict ? (
+                  <Link
+                    href="/orders"
+                    className="font-medium text-red-800 underline hover:text-red-950"
+                  >
+                    All orders
+                  </Link>
+                ) : null}
+              </div>
+              {isPendingOrderConflict ? (
+                <OrderCancelButton
+                  orderId={pendingOrderId}
+                  redirectTo={null}
+                  label="Cancel order"
+                  className="max-w-xs"
+                  onSuccess={() => {
+                    setErrorMessage(null);
+                    setPendingOrderId(null);
+                    setIsPendingOrderConflict(false);
+                    void reloadCart();
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
         </section>
       ) : null}

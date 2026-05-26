@@ -58,7 +58,7 @@ export default async function RootLayout({
             isAuthenticated={Boolean(payload)}
           />
           {children}
-          <HomeFooter />
+          <HomeFooter isAuthenticated={Boolean(payload)} />
         </ToastProvider>
       </body>
     </html>

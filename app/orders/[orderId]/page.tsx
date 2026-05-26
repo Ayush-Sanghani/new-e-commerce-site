@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import { OrderPayNowButton } from "@/components/orders/order-pay-now-button";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderSummaryCard } from "@/components/orders/order-summary-card";
@@ -187,20 +188,23 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               </section>
             ) : null}
 
-            {order.checkout ? (
+            {showAwaitingPayment ? (
               <section className="rounded-2xl border border-neutral-200 bg-white p-5">
                 <h2 className="font-semibold text-slate-900">Complete payment</h2>
                 <p className="mt-1 text-sm text-slate-600">
                   Total due: {formatInr(order.total)}
                 </p>
-                <div className="mt-4">
-                  <OrderPayNowButton
-                    orderId={order.id}
-                    amount={order.checkout.amount}
-                    currency={order.checkout.currency}
-                    razorpayOrderId={order.checkout.razorpayOrderId}
-                    keyId={order.checkout.keyId}
-                  />
+                <div className="mt-4 space-y-2">
+                  {order.checkout ? (
+                    <OrderPayNowButton
+                      orderId={order.id}
+                      amount={order.checkout.amount}
+                      currency={order.checkout.currency}
+                      razorpayOrderId={order.checkout.razorpayOrderId}
+                      keyId={order.checkout.keyId}
+                    />
+                  ) : null}
+                  <OrderCancelButton orderId={order.id} />
                 </div>
               </section>
             ) : null}

@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-export function HomeFooter() {
+type HomeFooterProps = {
+  isAuthenticated?: boolean;
+};
+
+export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
   return (
     <footer className="mt-12 border-t border-neutral-200 bg-white">
       <div className="mx-auto grid w-full max-w-[1500px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
@@ -29,8 +33,18 @@ export function HomeFooter() {
         <div>
           <h4 className="text-lg font-semibold text-slate-900">Customer</h4>
           <ul className="mt-4 space-y-2 text-sm text-slate-500">
-            <li><a href="#" className="hover:text-slate-800">My Account</a></li>
-            <li><a href="#" className="hover:text-slate-800">Track Order</a></li>
+            <li>
+              <Link href="/account" className="hover:text-slate-800">
+                My Account
+              </Link>
+            </li>
+            {isAuthenticated ? (
+              <li>
+                <Link href="/orders" className="hover:text-slate-800">
+                  My Orders
+                </Link>
+              </li>
+            ) : null}
             <li><a href="#" className="hover:text-slate-800">Wishlist</a></li>
             <li>
               <Link href="/return-refund-policy" className="hover:text-slate-800">

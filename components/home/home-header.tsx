@@ -68,6 +68,11 @@ export function HomeHeader({
           <Link href="/contact" className="transition-colors hover:text-slate-900">
             Contact
           </Link>
+          {isAuthenticated ? (
+            <Link href="/orders" className="transition-colors hover:text-slate-900">
+              My Orders
+            </Link>
+          ) : null}
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -127,9 +132,14 @@ export function HomeHeader({
                   Shop
                 </Link>
                 {isAuthenticated ? (
-                  <Link href="/account" className="block transition-colors hover:text-slate-900">
-                    Account
-                  </Link>
+                  <>
+                    <Link href="/account" className="block transition-colors hover:text-slate-900">
+                      Account
+                    </Link>
+                    <Link href="/orders" className="block transition-colors hover:text-slate-900">
+                      My Orders
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <Link href="/login" className="block transition-colors hover:text-slate-900">
