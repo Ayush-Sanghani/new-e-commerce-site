@@ -70,9 +70,12 @@ export function NewArrivalsSection({ products }: NewArrivalsSectionProps) {
       </div>
 
       <div className="mt-8 text-center">
-        <a href="#" className="inline-block border-b-2 border-slate-700 text-sm font-semibold text-slate-800">
+        <Link
+          href="/shop"
+          className="inline-block border-b-2 border-slate-700 text-sm font-semibold text-slate-800 transition hover:border-blue-600 hover:text-blue-700"
+        >
           Shop All Collection
-        </a>
+        </Link>
       </div>
     </SectionContainer>
   );

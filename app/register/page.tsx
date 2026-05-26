@@ -125,7 +125,7 @@ export default function RegisterPage() {
         router.push("/home");
         router.refresh();
       } else {
-        setServerError(result.message || "Registration failed. Try again.");
+        setServerError(result.error || result.message || "Registration failed. Try again.");
       }
     } catch {
       setServerError("Network error. Please check your connection.");
@@ -400,19 +400,19 @@ export default function RegisterPage() {
                 <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-500 leading-relaxed">
                   By creating an account you agree to our{" "}
-                  <a
-                    href="#"
-                    className="text-violet-600 hover:underline font-medium"
+                  <Link
+                    href="/terms-and-conditions"
+                    className="font-medium text-violet-600 hover:underline"
                   >
                     Terms of Service
-                  </a>{" "}
+                  </Link>{" "}
                   and{" "}
-                  <a
-                    href="#"
-                    className="text-violet-600 hover:underline font-medium"
+                  <Link
+                    href="/privacy-policy"
+                    className="font-medium text-violet-600 hover:underline"
                   >
                     Privacy Policy
-                  </a>
+                  </Link>
                   .
                 </p>
               </div>

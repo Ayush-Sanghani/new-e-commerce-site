@@ -19,9 +19,21 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
         <div>
           <h4 className="text-lg font-semibold text-slate-900">Company</h4>
           <ul className="mt-4 space-y-2 text-sm text-slate-500">
-            <li><a href="#" className="hover:text-slate-800">About Us</a></li>
-            <li><a href="#" className="hover:text-slate-800">Careers</a></li>
-            <li><a href="#" className="hover:text-slate-800">Blog</a></li>
+            <li>
+              <Link href="/contact" className="hover:text-slate-800">
+                About Us
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-slate-800">
+                Careers
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:text-slate-800">
+                Blog
+              </Link>
+            </li>
             <li>
               <Link href="/contact" className="hover:text-slate-800">
                 Contact
@@ -45,7 +57,11 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
                 </Link>
               </li>
             ) : null}
-            <li><a href="#" className="hover:text-slate-800">Wishlist</a></li>
+            <li>
+              <Link href="/shop" className="hover:text-slate-800">
+                Shop
+              </Link>
+            </li>
             <li>
               <Link href="/return-refund-policy" className="hover:text-slate-800">
                 Returns & Refunds
