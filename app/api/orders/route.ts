@@ -136,6 +136,25 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (result.error === "pending_order_exists") {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "You already have a pending order. Complete payment or cancel it before starting a new checkout.",
+            data: {
+              code: result.error,
+              orderId: result.orderId,
+              orderNumber: result.orderNumber,
+              razorpayOrderId: result.razorpayOrderId,
+              amount: result.amount,
+              keyId: result.keyId,
+            },
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json({ success: false, message: "Unknown error.", data: null }, { status: 500 });
     }
 

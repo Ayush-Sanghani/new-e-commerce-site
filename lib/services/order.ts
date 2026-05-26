@@ -39,6 +39,13 @@ export type OrderDetailItemRow = {
   lineTotal: number;
 };
 
+export type OrderCheckoutFields = {
+  amount: number;
+  currency: string;
+  razorpayOrderId: string;
+  keyId: string;
+};
+
 export type OrderDetailRow = {
   id: string;
   orderNumber: string;
@@ -54,6 +61,8 @@ export type OrderDetailRow = {
   items: OrderDetailItemRow[];
   paymentStatus: PaymentStatus | null;
   shippingAddress: Record<string, unknown> | null;
+  /** Present only for pending_payment orders with an active Razorpay order */
+  checkout: OrderCheckoutFields | null;
 };
 
 export async function listOrdersForUser(userId: string): Promise<OrderListRow[]> {
@@ -113,6 +122,17 @@ export async function getOrderForUser(
       ? (order.shippingAddress as Record<string, unknown>)
       : null;
 
+  const latestPayment = order.payments[0];
+  const checkout =
+    order.status === OrderStatus.pending_payment && order.razorpayOrderId
+      ? {
+          amount: rupeesToPaise(order.total),
+          currency: order.currency,
+          razorpayOrderId: order.razorpayOrderId,
+          keyId: getRazorpayKeyId(),
+        }
+      : null;
+
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -135,12 +155,16 @@ export async function getOrderForUser(
       quantity: item.quantity,
       lineTotal: decimalToNumber(computeLineTotal(item.unitPrice, item.quantity)),
     })),
-    paymentStatus: order.payments[0]?.status ?? null,
+    paymentStatus: latestPayment?.status ?? null,
     shippingAddress,
+    checkout,
   };
 }
 
 const MIN_CART_QUANTITY = 1;
+
+/** Block a second checkout while a recent pending_payment order exists */
+export const PENDING_ORDER_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const productForOrder = {
   id: true,
@@ -195,6 +219,15 @@ export type CreateOrderFromCartResult =
       orderId: string;
       orderNumber: string;
       message: string;
+    }
+  | {
+      ok: false;
+      error: "pending_order_exists";
+      orderId: string;
+      orderNumber: string;
+      razorpayOrderId?: string;
+      amount?: number;
+      keyId?: string;
     };
 
 /**
@@ -266,6 +299,38 @@ export async function createOrderFromCart(
 
   if (total.lte(0)) {
     return { ok: false, error: "empty_cart" };
+  }
+
+  const pendingCutoff = new Date(Date.now() - PENDING_ORDER_MAX_AGE_MS);
+  const existingPending = await prisma.order.findFirst({
+    where: {
+      userId: input.userId,
+      status: OrderStatus.pending_payment,
+      createdAt: { gte: pendingCutoff },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      orderNumber: true,
+      razorpayOrderId: true,
+      total: true,
+      currency: true,
+    },
+  });
+
+  if (existingPending) {
+    const resumeAmount = existingPending.razorpayOrderId
+      ? rupeesToPaise(existingPending.total)
+      : undefined;
+    return {
+      ok: false,
+      error: "pending_order_exists",
+      orderId: existingPending.id,
+      orderNumber: existingPending.orderNumber,
+      razorpayOrderId: existingPending.razorpayOrderId ?? undefined,
+      amount: resumeAmount,
+      keyId: existingPending.razorpayOrderId ? getRazorpayKeyId() : undefined,
+    };
   }
 
   const amountPaise = rupeesToPaise(total);
@@ -354,6 +419,148 @@ export async function createOrderFromCart(
   }
 }
 
+export type FinalizePaidOrderInput = {
+  orderId: string;
+  razorpayPaymentId?: string;
+};
+
+export type FinalizePaidOrderResult =
+  | {
+      ok: true;
+      data: {
+        orderId: string;
+        orderNumber: string;
+        orderStatus: OrderStatus;
+        paymentStatus: PaymentStatus;
+        userId: string;
+      };
+    }
+  | { ok: false; error: "order_not_found" }
+  | { ok: false; error: "insufficient_stock_at_capture" };
+
+/**
+ * Single idempotent path to mark an order paid: capture payment, decrement stock, clear cart.
+ * Used by client verify and Razorpay payment.captured webhook.
+ */
+export async function finalizePaidOrder(
+  input: FinalizePaidOrderInput
+): Promise<FinalizePaidOrderResult> {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: input.orderId },
+      include: {
+        items: { select: { productId: true, quantity: true } },
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    if (!order) {
+      return { ok: false, error: "order_not_found" };
+    }
+
+    const latestPayment = order.payments[0];
+    if (order.status === OrderStatus.paid && latestPayment?.status === PaymentStatus.captured) {
+      return {
+        ok: true,
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          orderStatus: order.status,
+          paymentStatus: latestPayment.status,
+          userId: order.userId,
+        },
+      };
+    }
+
+    for (const item of order.items) {
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, stock: { gte: item.quantity } },
+        data: { stock: { decrement: item.quantity } },
+      });
+      if (updated.count === 0) {
+        return { ok: false, error: "insufficient_stock_at_capture" };
+      }
+    }
+
+    const paymentRow = await tx.payment.findFirst({
+      where: { orderId: order.id },
+      orderBy: { createdAt: "desc" },
+    });
+    if (paymentRow) {
+      await tx.payment.update({
+        where: { id: paymentRow.id },
+        data: {
+          status: PaymentStatus.captured,
+          ...(input.razorpayPaymentId
+            ? { razorpayPaymentId: input.razorpayPaymentId }
+            : {}),
+        },
+      });
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: OrderStatus.paid },
+    });
+
+    const cart = await tx.cart.findUnique({ where: { userId: order.userId } });
+    if (cart) {
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    }
+
+    const updatedOrder = await tx.order.findUniqueOrThrow({
+      where: { id: order.id },
+      include: {
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+
+    return {
+      ok: true,
+      data: {
+        orderId: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        orderStatus: updatedOrder.status,
+        paymentStatus: updatedOrder.payments[0]?.status ?? PaymentStatus.captured,
+        userId: order.userId,
+      },
+    };
+  });
+}
+
+export type CancelPendingOrderResult =
+  | { ok: true; data: { orderId: string; orderNumber: string } }
+  | { ok: false; error: "order_not_found" }
+  | { ok: false; error: "order_not_cancellable" };
+
+export async function cancelPendingOrder(
+  userId: string,
+  orderId: string
+): Promise<CancelPendingOrderResult> {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    select: { id: true, orderNumber: true, status: true },
+  });
+
+  if (!order) {
+    return { ok: false, error: "order_not_found" };
+  }
+
+  if (order.status !== OrderStatus.pending_payment) {
+    return { ok: false, error: "order_not_cancellable" };
+  }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: OrderStatus.cancelled },
+  });
+
+  return {
+    ok: true,
+    data: { orderId: order.id, orderNumber: order.orderNumber },
+  };
+}
+
 export type VerifyOrderPaymentInput = {
   userId: string;
   orderId: string;
@@ -376,7 +583,8 @@ export type VerifyOrderPaymentResult =
   | { ok: false; error: "order_mismatch" }
   | { ok: false; error: "invalid_signature" }
   | { ok: false; error: "payment_not_found" }
-  | { ok: false; error: "payment_mismatch" };
+  | { ok: false; error: "payment_mismatch" }
+  | { ok: false; error: "insufficient_stock_at_capture" };
 
 export async function verifyOrderPayment(
   input: VerifyOrderPaymentInput
@@ -444,48 +652,22 @@ export async function verifyOrderPayment(
     return { ok: false, error: "payment_mismatch" };
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const paymentRow = await tx.payment.findFirst({
-      where: { orderId: order.id },
-      orderBy: { createdAt: "desc" },
-    });
-    if (paymentRow) {
-      await tx.payment.update({
-        where: { id: paymentRow.id },
-        data: {
-          status: PaymentStatus.captured,
-          razorpayPaymentId: input.razorpayPaymentId,
-        },
-      });
-    }
-
-    await tx.order.update({
-      where: { id: order.id },
-      data: { status: OrderStatus.paid },
-    });
-
-    const cart = await tx.cart.findUnique({ where: { userId: input.userId } });
-    if (cart) {
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-    }
-
-    const updatedOrder = await tx.order.findUniqueOrThrow({
-      where: { id: order.id },
-      include: {
-        payments: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-    });
-
-    return updatedOrder;
+  const finalized = await finalizePaidOrder({
+    orderId: order.id,
+    razorpayPaymentId: input.razorpayPaymentId,
   });
+
+  if (!finalized.ok) {
+    return finalized;
+  }
 
   return {
     ok: true,
     data: {
-      orderId: updated.id,
-      orderNumber: updated.orderNumber,
-      orderStatus: updated.status,
-      paymentStatus: updated.payments[0]?.status ?? PaymentStatus.captured,
+      orderId: finalized.data.orderId,
+      orderNumber: finalized.data.orderNumber,
+      orderStatus: finalized.data.orderStatus,
+      paymentStatus: finalized.data.paymentStatus,
     },
   };
 }
@@ -501,7 +683,7 @@ type RazorpayWebhookPayment = {
 export type ProcessRazorpayWebhookResult =
   | { ok: true; ignored: "order_not_found" | "unsupported_event" | "already_processed" }
   | { ok: true; updated: "captured" | "failed"; orderId: string }
-  | { ok: false; error: "payment_mismatch" };
+  | { ok: false; error: "payment_mismatch" | "insufficient_stock_at_capture" };
 
 export async function processRazorpayWebhook(
   event: string,
@@ -528,26 +710,17 @@ export async function processRazorpayWebhook(
       return { ok: true, ignored: "already_processed" };
     }
 
-    await prisma.$transaction(async (tx) => {
-      const paymentRow = await tx.payment.findFirst({
-        where: { orderId: order.id },
-        orderBy: { createdAt: "desc" },
-      });
-      if (paymentRow) {
-        await tx.payment.update({
-          where: { id: paymentRow.id },
-          data: {
-            status: PaymentStatus.captured,
-            razorpayPaymentId: payment.id,
-          },
-        });
-      }
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: OrderStatus.paid },
-      });
+    const finalized = await finalizePaidOrder({
+      orderId: order.id,
+      razorpayPaymentId: payment.id,
     });
+
+    if (!finalized.ok) {
+      if (finalized.error === "insufficient_stock_at_capture") {
+        return { ok: false, error: "insufficient_stock_at_capture" };
+      }
+      return { ok: true, ignored: "order_not_found" };
+    }
 
     return { ok: true, updated: "captured", orderId: order.id };
   }

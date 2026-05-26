@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
+import { enforceAuthRateLimit } from "@/lib/rate-limit";
 
 const MIN_PASSWORD_LENGTH = 8;
 const SALT_ROUNDS = 10;
@@ -39,6 +40,9 @@ function validateBody(body: unknown): { name?: string; email: string; password: 
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceAuthRateLimit(request, "register");
+  if (rateLimited) return rateLimited;
+
   try {
     let body: unknown;
     try {

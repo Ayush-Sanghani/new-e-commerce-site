@@ -67,6 +67,18 @@ export async function POST(
         );
       }
 
+      if (result.error === "insufficient_stock_at_capture") {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Payment was received but one or more items are no longer in stock. Contact support with your order number.",
+            data: { code: result.error },
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { enforceAuthRateLimit } from "@/lib/rate-limit";
 import {
   hashPasswordResetToken,
   isPasswordResetTokenExpired,
@@ -33,6 +34,9 @@ function validateBody(
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceAuthRateLimit(request, "reset-password");
+  if (rateLimited) return rateLimited;
+
   try {
     let body: unknown;
     try {

@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus, PaymentStatus } from "@prisma/client";
 
 const statusStyles: Record<OrderStatus, string> = {
   pending_payment: "bg-amber-50 text-amber-800 ring-amber-200",
@@ -8,22 +8,39 @@ const statusStyles: Record<OrderStatus, string> = {
 };
 
 const statusLabels: Record<OrderStatus, string> = {
-  pending_payment: "Pending payment",
+  pending_payment: "Awaiting payment",
   paid: "Paid",
   cancelled: "Cancelled",
   refunded: "Refunded",
 };
 
+const failedPaymentStyle = "bg-red-50 text-red-800 ring-red-200";
+
+function resolveLabel(status: OrderStatus, paymentStatus: PaymentStatus | null | undefined): string {
+  if (status === "pending_payment" && paymentStatus === "failed") {
+    return "Payment failed";
+  }
+  return statusLabels[status];
+}
+
+function resolveStyle(status: OrderStatus, paymentStatus: PaymentStatus | null | undefined): string {
+  if (status === "pending_payment" && paymentStatus === "failed") {
+    return failedPaymentStyle;
+  }
+  return statusStyles[status];
+}
+
 type OrderStatusBadgeProps = {
   status: OrderStatus;
+  paymentStatus?: PaymentStatus | null;
 };
 
-export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
+export function OrderStatusBadge({ status, paymentStatus }: OrderStatusBadgeProps) {
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${statusStyles[status]}`}
+      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${resolveStyle(status, paymentStatus)}`}
     >
-      {statusLabels[status]}
+      {resolveLabel(status, paymentStatus)}
     </span>
   );
 }

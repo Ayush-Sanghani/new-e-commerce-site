@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { attachAuthCookie } from "@/lib/auth-cookie";
 import { getPasswordLoginBlockMessage } from "@/lib/auth-password";
 import { prisma } from "@/lib/db";
+import { enforceAuthRateLimit } from "@/lib/rate-limit";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -31,6 +32,9 @@ function validateBody(body: unknown): { email: string; password: string } | { er
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = await enforceAuthRateLimit(request, "login");
+  if (rateLimited) return rateLimited;
+
   try {
     let body: unknown;
     try {

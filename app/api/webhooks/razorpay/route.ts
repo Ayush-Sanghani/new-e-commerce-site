@@ -72,6 +72,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.ok) {
+      if (result.error === "insufficient_stock_at_capture") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Payment captured but stock insufficient to fulfill order.",
+            data: { code: result.error },
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { success: false, message: "Webhook payment mismatch.", data: { code: result.error } },
         { status: 400 }

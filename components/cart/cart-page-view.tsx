@@ -163,6 +163,77 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
     });
   };
 
+  const openRazorpayCheckout = async (checkout: {
+    orderId: string;
+    amount: number;
+    currency: string;
+    razorpayOrderId: string;
+    keyId: string;
+  }) => {
+    const sdkReady = await loadRazorpayScript();
+    if (!sdkReady) {
+      setErrorMessage("Unable to load Razorpay checkout.");
+      return;
+    }
+
+    const RazorpayCtor = (window as {
+      Razorpay?: new (options: unknown) => { open: () => void };
+    }).Razorpay;
+    if (!RazorpayCtor) {
+      setErrorMessage("Razorpay SDK is not available.");
+      return;
+    }
+
+    const { orderId, amount, currency, razorpayOrderId, keyId } = checkout;
+
+    const rzp = new RazorpayCtor({
+      key: keyId,
+      amount,
+      currency,
+      order_id: razorpayOrderId,
+      name: "DummyMart",
+      handler: async (response: {
+        razorpay_order_id: string;
+        razorpay_payment_id: string;
+        razorpay_signature: string;
+      }) => {
+        const verifyRes = await fetch(`/api/orders/${orderId}/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          }),
+        });
+
+        const verifyData = (await verifyRes.json()) as {
+          success?: boolean;
+          message?: string;
+        };
+
+        if (!verifyRes.ok || !verifyData.success) {
+          setErrorMessage(verifyData.message || "Payment verification failed.");
+          setPendingOrderId(orderId);
+          return;
+        }
+
+        await reloadCart();
+        notifyCartUpdated();
+        setPendingOrderId(null);
+        router.push(`/orders/${orderId}?paid=1`);
+      },
+      modal: {
+        ondismiss: () => {
+          setErrorMessage("Payment cancelled.");
+          setPendingOrderId(orderId);
+        },
+      },
+    });
+
+    rzp.open();
+  };
+
   const startCheckout = async () => {
     if (isCheckingOut) return;
 
@@ -194,25 +265,55 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ shippingAddress }),
       });
+      type CreateOrderData = {
+        code?: string;
+        orderId?: string;
+        orderNumber?: string;
+        amount?: number;
+        currency?: string;
+        razorpayOrderId?: string;
+        keyId?: string;
+      };
+
       const createData = (await createRes.json()) as {
         success?: boolean;
         message?: string;
-        data?: {
-          orderId: string;
-          amount: number;
-          currency: string;
-          razorpayOrderId: string;
-          keyId: string;
-        };
+        data?: CreateOrderData;
       };
+
+      if (createRes.status === 409 && createData.data?.code === "pending_order_exists") {
+        const pending = createData.data;
+        setPendingOrderId(pending.orderId ?? null);
+        setErrorMessage(
+          createData.message ||
+            "You already have a pending order. Complete payment or open your order page."
+        );
+
+        if (
+          pending.orderId &&
+          pending.amount &&
+          pending.currency &&
+          pending.razorpayOrderId &&
+          pending.keyId
+        ) {
+          await openRazorpayCheckout({
+            orderId: pending.orderId,
+            amount: pending.amount,
+            currency: pending.currency,
+            razorpayOrderId: pending.razorpayOrderId,
+            keyId: pending.keyId,
+          });
+        }
+        return;
+      }
 
       if (!createRes.ok || !createData.success || !createData.data) {
         const failedOrderId =
           createData.data &&
           typeof createData.data === "object" &&
           "orderId" in createData.data &&
-          typeof (createData.data as { orderId?: string }).orderId === "string"
-            ? (createData.data as { orderId: string }).orderId
+          typeof createData.data.orderId === "string"
+            ? createData.data.orderId
             : null;
         if (failedOrderId) {
           setPendingOrderId(failedOrderId);
@@ -221,69 +322,17 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         return;
       }
 
-      const sdkReady = await loadRazorpayScript();
-      if (!sdkReady) {
-        setErrorMessage("Unable to load Razorpay checkout.");
-        return;
-      }
+      const payload = createData.data as {
+        orderId: string;
+        amount: number;
+        currency: string;
+        razorpayOrderId: string;
+        keyId: string;
+      };
 
-      const { orderId, amount, currency, razorpayOrderId, keyId } = createData.data;
-      setPendingOrderId(orderId);
+      setPendingOrderId(payload.orderId);
 
-      const RazorpayCtor = (window as {
-        Razorpay?: new (options: unknown) => { open: () => void };
-      }).Razorpay;
-      if (!RazorpayCtor) {
-        setErrorMessage("Razorpay SDK is not available.");
-        return;
-      }
-
-      const rzp = new RazorpayCtor({
-        key: keyId,
-        amount,
-        currency,
-        order_id: razorpayOrderId,
-        name: "DummyMart",
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          const verifyRes = await fetch(`/api/orders/${orderId}/verify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-
-          const verifyData = (await verifyRes.json()) as {
-            success?: boolean;
-            message?: string;
-          };
-
-          if (!verifyRes.ok || !verifyData.success) {
-            setErrorMessage(verifyData.message || "Payment verification failed.");
-            setPendingOrderId(orderId);
-            return;
-          }
-
-          await reloadCart();
-          notifyCartUpdated();
-          setPendingOrderId(null);
-          router.push(`/orders/${orderId}?paid=1`);
-        },
-        modal: {
-          ondismiss: () => {
-            setErrorMessage("Payment cancelled.");
-            setPendingOrderId(orderId);
-          },
-        },
-      });
-
-      rzp.open();
+      await openRazorpayCheckout(payload);
     } catch {
       setErrorMessage("Network error while starting checkout.");
     } finally {
@@ -335,7 +384,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
               href={`/orders/${pendingOrderId}`}
               className="mt-2 block font-medium text-red-800 underline hover:text-red-950"
             >
-              View pending order
+              Complete payment — view pending order
             </Link>
           ) : null}
         </section>

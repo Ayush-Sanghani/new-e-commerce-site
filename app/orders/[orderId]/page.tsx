@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { OrderPayNowButton } from "@/components/orders/order-pay-now-button";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderSummaryCard } from "@/components/orders/order-summary-card";
 import { PaymentSuccessBanner } from "@/components/orders/payment-success-banner";
@@ -55,6 +56,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   }
 
   const showPaidBanner = paid === "1" && order.status === "paid";
+  const showAwaitingPayment = order.status === "pending_payment";
   const address = order.shippingAddress;
 
   return (
@@ -78,9 +80,20 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               </h1>
               <p className="mt-1 text-sm text-slate-500">Placed {formatOrderDate(order.createdAt)}</p>
             </div>
-            <OrderStatusBadge status={order.status} />
+            <OrderStatusBadge status={order.status} paymentStatus={order.paymentStatus} />
           </div>
         </section>
+
+        {showAwaitingPayment ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+            <p className="font-semibold">Awaiting payment</p>
+            <p className="mt-1 text-amber-800">
+              {order.paymentStatus === "failed"
+                ? "Your last payment attempt did not go through. You can try again below."
+                : "Complete payment to confirm this order."}
+            </p>
+          </section>
+        ) : null}
 
         {showPaidBanner ? (
           <PaymentSuccessBanner orderNumber={order.orderNumber} total={order.total} />
@@ -171,6 +184,24 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               <section className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm">
                 <h2 className="font-semibold text-slate-900">Payment</h2>
                 <p className="mt-2 capitalize text-slate-600">{order.paymentStatus.replace("_", " ")}</p>
+              </section>
+            ) : null}
+
+            {order.checkout ? (
+              <section className="rounded-2xl border border-neutral-200 bg-white p-5">
+                <h2 className="font-semibold text-slate-900">Complete payment</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Total due: {formatInr(order.total)}
+                </p>
+                <div className="mt-4">
+                  <OrderPayNowButton
+                    orderId={order.id}
+                    amount={order.checkout.amount}
+                    currency={order.checkout.currency}
+                    razorpayOrderId={order.checkout.razorpayOrderId}
+                    keyId={order.checkout.keyId}
+                  />
+                </div>
               </section>
             ) : null}
           </div>
