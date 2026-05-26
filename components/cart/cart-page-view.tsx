@@ -10,10 +10,21 @@ import {
 } from "@/lib/checkout-shipping";
 import type { CartPayload } from "@/lib/services/cart";
 import { CART_UPDATED_KEY, notifyCartUpdated } from "@/lib/cart-sync";
+import {
+  resolveCartItemPatchError,
+  resolveCheckoutError,
+  resolveIncompleteProfileError,
+  resolveNetworkError,
+  resolvePaymentCancelledError,
+  type ApiJsonBody,
+  type ClientErrorDisplay,
+} from "@/lib/client-api-errors";
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import { mapApiCartPayload } from "./mappers";
 import { CartEmptyState } from "./cart-empty-state";
+import { CartErrorBanner } from "./cart-error-banner";
 import { CartItemRow } from "./cart-item-row";
-import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import { CartSummaryCard } from "./cart-summary-card";
 import type { CartItem, CartSummary } from "./types";
 
@@ -22,9 +33,7 @@ type CartPageViewProps = {
   initialSummary: CartSummary;
 };
 
-type CartApiResponse = {
-  success?: boolean;
-  message?: string;
+type CartApiResponse = ApiJsonBody & {
   data?: { cart?: CartPayload | null };
 };
 
@@ -36,6 +45,10 @@ function applyCartResponse(
   const mapped = mapApiCartPayload(cart);
   setItems(mapped.items);
   setSummary(mapped.summary);
+}
+
+function cartItemLookups(items: CartItem[]) {
+  return items.map((item) => ({ productId: item.productId, title: item.title }));
 }
 
 type MeApiResponse = {
@@ -53,24 +66,32 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
   const [summary, setSummary] = useState<CartSummary>(initialSummary);
   const [isLoading, setIsLoading] = useState(true);
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorDisplay, setErrorDisplay] = useState<ClientErrorDisplay | null>(null);
+  const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [isPendingOrderConflict, setIsPendingOrderConflict] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
+  const clearErrors = () => {
+    setErrorDisplay(null);
+    setHighlightProductId(null);
+  };
+
   const reloadCart = async () => {
-    setErrorMessage(null);
+    clearErrors();
     setIsLoading(true);
     try {
       const res = await fetch("/api/cart", { method: "GET" });
       const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
-        setErrorMessage(data.message || "Unable to refresh cart.");
+        setErrorDisplay(
+          resolveCheckoutError(res.status, data, cartItemLookups(items))
+        );
         return;
       }
       applyCartResponse(data.data?.cart, setItems, setSummary);
     } catch {
-      setErrorMessage("Network error while refreshing cart.");
+      setErrorDisplay(resolveNetworkError("Network error while refreshing cart."));
     } finally {
       setIsLoading(false);
     }
@@ -94,8 +115,9 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
   };
 
   const patchQuantity = async (productId: string, quantity: number) => {
-    setErrorMessage(null);
+    clearErrors();
     setItemBusy(productId, true);
+    const productTitle = items.find((i) => i.productId === productId)?.title;
     try {
       const res = await fetch("/api/cart/items", {
         method: "PATCH",
@@ -104,20 +126,23 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       });
       const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
-        setErrorMessage(data.message || "Unable to update cart item.");
+        const display = resolveCartItemPatchError(res.status, data, productId, productTitle);
+        setErrorDisplay(display);
+        setHighlightProductId(display.highlightProductId ?? productId);
         return;
       }
       applyCartResponse(data.data?.cart, setItems, setSummary);
       notifyCartUpdated();
     } catch {
-      setErrorMessage("Network error while updating cart.");
+      setErrorDisplay(resolveNetworkError("Network error while updating cart."));
+      setHighlightProductId(productId);
     } finally {
       setItemBusy(productId, false);
     }
   };
 
   const removeItem = async (productId: string) => {
-    setErrorMessage(null);
+    clearErrors();
     setItemBusy(productId, true);
     try {
       const res = await fetch(`/api/cart/items?productId=${encodeURIComponent(productId)}`, {
@@ -125,13 +150,13 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       });
       const data = (await res.json()) as CartApiResponse;
       if (!res.ok || !data.success) {
-        setErrorMessage(data.message || "Unable to remove cart item.");
+        setErrorDisplay(resolveCartItemPatchError(res.status, data, productId));
         return;
       }
       applyCartResponse(data.data?.cart, setItems, setSummary);
       notifyCartUpdated();
     } catch {
-      setErrorMessage("Network error while removing cart item.");
+      setErrorDisplay(resolveNetworkError("Network error while removing cart item."));
     } finally {
       setItemBusy(productId, false);
     }
@@ -151,113 +176,71 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
     await patchQuantity(productId, current.quantity - 1);
   };
 
-  const loadRazorpayScript = async (): Promise<boolean> => {
-    if (typeof window === "undefined") return false;
-    if ((window as { Razorpay?: unknown }).Razorpay) return true;
-
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const openRazorpayCheckout = async (checkout: {
+  const openRazorpayCheckoutForOrder = async (checkout: {
     orderId: string;
+    orderNumber?: string;
     amount: number;
     currency: string;
     razorpayOrderId: string;
     keyId: string;
   }) => {
-    const sdkReady = await loadRazorpayScript();
-    if (!sdkReady) {
-      setErrorMessage("Unable to load Razorpay checkout.");
-      return;
-    }
-
-    const RazorpayCtor = (window as {
-      Razorpay?: new (options: unknown) => { open: () => void };
-    }).Razorpay;
-    if (!RazorpayCtor) {
-      setErrorMessage("Razorpay SDK is not available.");
-      return;
-    }
-
-    const { orderId, amount, currency, razorpayOrderId, keyId } = checkout;
-
-    const rzp = new RazorpayCtor({
-      key: keyId,
-      amount,
-      currency,
-      order_id: razorpayOrderId,
-      name: "DummyMart",
-      handler: async (response: {
-        razorpay_order_id: string;
-        razorpay_payment_id: string;
-        razorpay_signature: string;
-      }) => {
-        const verifyRes = await fetch(`/api/orders/${orderId}/verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          }),
-        });
-
-        const verifyData = (await verifyRes.json()) as {
-          success?: boolean;
-          message?: string;
-        };
-
-        if (!verifyRes.ok || !verifyData.success) {
-          setErrorMessage(verifyData.message || "Payment verification failed.");
-          setPendingOrderId(orderId);
-          return;
-        }
-
+    await openRazorpayCheckout({
+      keyId: checkout.keyId,
+      amount: checkout.amount,
+      currency: checkout.currency,
+      razorpayOrderId: checkout.razorpayOrderId,
+      orderId: checkout.orderId,
+      orderNumber: checkout.orderNumber,
+      onSuccess: async () => {
         await reloadCart();
         notifyCartUpdated();
         setPendingOrderId(null);
-        router.push(`/orders/${orderId}?paid=1`);
+        setIsPendingOrderConflict(false);
+        router.push(`/orders/${checkout.orderId}?paid=1`);
       },
-      modal: {
-        ondismiss: () => {
-          setErrorMessage("Payment cancelled.");
-          setPendingOrderId(orderId);
-        },
+      onError: (display) => {
+        setErrorDisplay(display);
+        setPendingOrderId(checkout.orderId);
+        if (display.highlightProductId) {
+          setHighlightProductId(display.highlightProductId);
+        }
+      },
+      onDismiss: () => {
+        setErrorDisplay(resolvePaymentCancelledError(checkout.orderId));
+        setPendingOrderId(checkout.orderId);
       },
     });
-
-    rzp.open();
   };
 
   const startCheckout = async () => {
     if (isCheckingOut) return;
 
-    setErrorMessage(null);
+    clearErrors();
     setPendingOrderId(null);
     setIsPendingOrderConflict(false);
     setIsCheckingOut(true);
 
     try {
+      if (items.length === 0) {
+        setErrorDisplay(resolveCheckoutError(400, { data: { code: "empty_cart" } }));
+        return;
+      }
+
       const meRes = await fetch("/api/me", { method: "GET" });
       const meData = (await meRes.json()) as MeApiResponse;
 
       if (!meRes.ok || !meData.success || !meData.data) {
-        setErrorMessage(meData.message || "Unable to load your profile for checkout.");
+        setErrorDisplay(
+          resolveCheckoutError(meRes.status, {
+            message: meData.message || "Unable to load your profile for checkout.",
+          })
+        );
         return;
       }
 
       const { user, profile } = meData.data;
       if (!isShippingAddressComplete(user.name, profile)) {
-        setErrorMessage(
-          "Add your name and full shipping address in Account before checkout."
-        );
+        setErrorDisplay(resolveIncompleteProfileError());
         return;
       }
 
@@ -268,40 +251,28 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ shippingAddress }),
       });
-      type CreateOrderData = {
-        code?: string;
-        orderId?: string;
-        orderNumber?: string;
-        amount?: number;
-        currency?: string;
-        razorpayOrderId?: string;
-        keyId?: string;
-      };
 
-      const createData = (await createRes.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: CreateOrderData;
-      };
+      const createData = (await createRes.json()) as ApiJsonBody;
+      const lookups = cartItemLookups(items);
 
       if (createRes.status === 409 && createData.data?.code === "pending_order_exists") {
         const pending = createData.data;
-        setPendingOrderId(pending.orderId ?? null);
+        const orderId = typeof pending.orderId === "string" ? pending.orderId : null;
+        setPendingOrderId(orderId);
         setIsPendingOrderConflict(true);
-        setErrorMessage(
-          createData.message ||
-            "You already have a pending order. Complete payment or open your order page."
-        );
+        setErrorDisplay(resolveCheckoutError(createRes.status, createData, lookups));
 
         if (
-          pending.orderId &&
-          pending.amount &&
-          pending.currency &&
-          pending.razorpayOrderId &&
-          pending.keyId
+          orderId &&
+          typeof pending.amount === "number" &&
+          typeof pending.currency === "string" &&
+          typeof pending.razorpayOrderId === "string" &&
+          typeof pending.keyId === "string"
         ) {
-          await openRazorpayCheckout({
-            orderId: pending.orderId,
+          await openRazorpayCheckoutForOrder({
+            orderId,
+            orderNumber:
+              typeof pending.orderNumber === "string" ? pending.orderNumber : undefined,
             amount: pending.amount,
             currency: pending.currency,
             razorpayOrderId: pending.razorpayOrderId,
@@ -312,22 +283,16 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       }
 
       if (!createRes.ok || !createData.success || !createData.data) {
-        const failedOrderId =
-          createData.data &&
-          typeof createData.data === "object" &&
-          "orderId" in createData.data &&
-          typeof createData.data.orderId === "string"
-            ? createData.data.orderId
-            : null;
-        if (failedOrderId) {
-          setPendingOrderId(failedOrderId);
-        }
-        setErrorMessage(createData.message || "Unable to create order.");
+        const display = resolveCheckoutError(createRes.status, createData, lookups);
+        setErrorDisplay(display);
+        if (display.orderId) setPendingOrderId(display.orderId);
+        if (display.highlightProductId) setHighlightProductId(display.highlightProductId);
         return;
       }
 
       const payload = createData.data as {
         orderId: string;
+        orderNumber?: string;
         amount: number;
         currency: string;
         razorpayOrderId: string;
@@ -336,9 +301,16 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
 
       setPendingOrderId(payload.orderId);
 
-      await openRazorpayCheckout(payload);
+      await openRazorpayCheckoutForOrder({
+        orderId: payload.orderId,
+        orderNumber: payload.orderNumber,
+        amount: payload.amount,
+        currency: payload.currency,
+        razorpayOrderId: payload.razorpayOrderId,
+        keyId: payload.keyId,
+      });
     } catch {
-      setErrorMessage("Network error while starting checkout.");
+      setErrorDisplay(resolveNetworkError("Network error while starting checkout."));
     } finally {
       setIsCheckingOut(false);
     }
@@ -372,54 +344,23 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         </section>
       ) : null}
 
-      {!isLoading && errorMessage ? (
-        <section className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <p>{errorMessage}</p>
-          {errorMessage.includes("shipping address") ? (
-            <Link
-              href="/account"
-              className="mt-2 inline-flex font-medium text-red-800 underline hover:text-red-950"
-            >
-              Update address in Account
-            </Link>
+      {!isLoading && errorDisplay ? (
+        <CartErrorBanner display={errorDisplay}>
+          {isPendingOrderConflict && pendingOrderId ? (
+            <OrderCancelButton
+              orderId={pendingOrderId}
+              redirectTo={null}
+              label="Cancel order"
+              className="max-w-xs"
+              onSuccess={() => {
+                clearErrors();
+                setPendingOrderId(null);
+                setIsPendingOrderConflict(false);
+                void reloadCart();
+              }}
+            />
           ) : null}
-          {pendingOrderId ? (
-            <div className="mt-3 space-y-3">
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <Link
-                  href={`/orders/${pendingOrderId}`}
-                  className="font-medium text-red-800 underline hover:text-red-950"
-                >
-                  {isPendingOrderConflict
-                    ? "View pending order"
-                    : "Complete payment — view pending order"}
-                </Link>
-                {isPendingOrderConflict ? (
-                  <Link
-                    href="/orders"
-                    className="font-medium text-red-800 underline hover:text-red-950"
-                  >
-                    All orders
-                  </Link>
-                ) : null}
-              </div>
-              {isPendingOrderConflict ? (
-                <OrderCancelButton
-                  orderId={pendingOrderId}
-                  redirectTo={null}
-                  label="Cancel order"
-                  className="max-w-xs"
-                  onSuccess={() => {
-                    setErrorMessage(null);
-                    setPendingOrderId(null);
-                    setIsPendingOrderConflict(false);
-                    void reloadCart();
-                  }}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+        </CartErrorBanner>
       ) : null}
 
       {!isLoading && items.length === 0 ? <CartEmptyState /> : null}
@@ -432,6 +373,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
                 key={item.id}
                 item={item}
                 isBusy={busyProductIds.includes(item.productId)}
+                highlighted={highlightProductId === item.productId}
                 onDecrease={decreaseQuantity}
                 onIncrease={increaseQuantity}
                 onRemove={removeItem}

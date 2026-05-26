@@ -70,7 +70,11 @@ export async function PATCH(request: NextRequest) {
         {
           success: false,
           message: `Not enough stock. Maximum available: ${result.max}.`,
-          data: { maxStock: result.max },
+          data: {
+            code: "insufficient_stock",
+            productId,
+            maxStock: result.max,
+          },
         },
         { status: 400 }
       );
@@ -79,7 +83,11 @@ export async function PATCH(request: NextRequest) {
       {
         success: false,
         message: `Minimum order quantity is ${result.min}.`,
-        data: { minimumOrderQuantity: result.min },
+        data: {
+          code: "minimum_quantity",
+          productId,
+          minimumOrderQuantity: result.min,
+        },
       },
       { status: 400 }
     );
@@ -192,7 +200,11 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           message: `Not enough stock. Maximum available: ${result.max}.`,
-          data: { maxStock: result.max },
+          data: {
+            code: "insufficient_stock",
+            productId,
+            maxStock: result.max,
+          },
         },
         { status: 400 }
       );
@@ -201,7 +213,11 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         message: `Minimum order quantity is ${result.min}.`,
-        data: { minimumOrderQuantity: result.min },
+        data: {
+          code: "minimum_quantity",
+          productId,
+          minimumOrderQuantity: result.min,
+        },
       },
       { status: 400 }
     );

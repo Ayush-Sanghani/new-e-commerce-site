@@ -6,16 +6,27 @@ import type { CartItem } from "./types";
 type CartItemRowProps = {
   item: CartItem;
   isBusy?: boolean;
+  highlighted?: boolean;
   onDecrease: (productId: string) => void;
   onIncrease: (productId: string) => void;
   onRemove: (productId: string) => void;
 };
 
-export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: CartItemRowProps) {
+export function CartItemRow({
+  item,
+  isBusy,
+  highlighted,
+  onDecrease,
+  onIncrease,
+  onRemove,
+}: CartItemRowProps) {
   const onSale = item.discountPercentage > 0 && item.listPrice > item.unitPrice;
 
   return (
-    <Card as="article" className="p-4 sm:p-5">
+    <Card
+      as="article"
+      className={`p-4 sm:p-5 ${highlighted ? "ring-2 ring-red-300 bg-red-50/40" : ""}`}
+    >
       <div className="flex flex-col gap-4 sm:flex-row">
         <Link href={`/shop/${item.productId}`} className="shrink-0">
           <img

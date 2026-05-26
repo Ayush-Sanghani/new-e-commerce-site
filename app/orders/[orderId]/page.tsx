@@ -198,6 +198,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                   {order.checkout ? (
                     <OrderPayNowButton
                       orderId={order.id}
+                      orderNumber={order.orderNumber}
                       amount={order.checkout.amount}
                       currency={order.checkout.currency}
                       razorpayOrderId={order.checkout.razorpayOrderId}
