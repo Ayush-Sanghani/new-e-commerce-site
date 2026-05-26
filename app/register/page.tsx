@@ -122,7 +122,8 @@ export default function RegisterPage() {
       });
       const result = await res.json();
       if (res.ok) {
-        router.push("/login?registered=true");
+        router.push("/home");
+        router.refresh();
       } else {
         setServerError(result.message || "Registration failed. Try again.");
       }

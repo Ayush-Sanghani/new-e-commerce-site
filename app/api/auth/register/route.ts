@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { attachAuthCookie } from "@/lib/auth-cookie";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { enforceAuthRateLimit } from "@/lib/rate-limit";
@@ -90,12 +91,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: "Registration successful.",
       user,
     });
+
+    await attachAuthCookie(response, user);
+    return response;
   } catch (err) {
+    if (err instanceof Error && err.message.includes("JWT_SECRET")) {
+      return NextResponse.json(
+        { success: false, error: "Server configuration error." },
+        { status: 500 }
+      );
+    }
     console.error("Registration error:", err);
     return NextResponse.json(
       { success: false, error: "Registration failed. Please try again." },
