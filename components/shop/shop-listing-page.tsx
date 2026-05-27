@@ -344,31 +344,31 @@ export function ShopListingPage({
               </div>
             </div>
               </div>
+
+              <div className="mt-4 flex flex-wrap gap-x-2 gap-y-3 border-t border-neutral-100 pt-4">
+                {categoryChips.map((chip) => {
+                  const isActive = chip.value === activeCategoryValue;
+                  const href =
+                    chip.value === "All"
+                      ? buildShopHref({ ...hrefBase, category: undefined })
+                      : buildShopHref({ ...hrefBase, category: chip.value });
+
+                  return (
+                    <Link
+                      key={chip.value}
+                      href={href}
+                      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition duration-200 ${
+                        isActive
+                          ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                          : "border-neutral-300 bg-white text-slate-700 hover:border-neutral-400 hover:bg-neutral-50 hover:shadow-sm"
+                      }`}
+                    >
+                      {chip.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </ShopFiltersPanel>
-
-            <div className="flex flex-wrap gap-x-2 gap-y-3 border-t border-neutral-100 pt-4">
-            {categoryChips.map((chip) => {
-              const isActive = chip.value === activeCategoryValue;
-              const href =
-                chip.value === "All"
-                  ? buildShopHref({ ...hrefBase, category: undefined })
-                  : buildShopHref({ ...hrefBase, category: chip.value });
-
-              return (
-                <Link
-                  key={chip.value}
-                  href={href}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition duration-200 ${
-                    isActive
-                      ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                      : "border-neutral-300 bg-white text-slate-700 hover:border-neutral-400 hover:bg-neutral-50 hover:shadow-sm"
-                  }`}
-                >
-                  {chip.label}
-                </Link>
-              );
-            })}
-            </div>
           </form>
         </section>
       </ShopFiltersProvider>
