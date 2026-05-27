@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { Lock, Truck, RotateCcw, Tag } from "lucide-react";
 import { Card } from "@/components/home/ui/card";
 import { formatInr } from "@/lib/pricing";
 import type { CartSummary } from "./types";
@@ -9,6 +13,12 @@ type CartSummaryCardProps = {
   onCheckout?: () => void;
   checkoutLabel?: string;
 };
+
+const TRUST_BADGES = [
+  { icon: Lock, label: "Secure Checkout" },
+  { icon: Truck, label: "Free Shipping" },
+  { icon: RotateCcw, label: "Easy Returns" },
+];
 
 export function CartSummaryCard({
   summary,
@@ -57,6 +67,16 @@ export function CartSummaryCard({
       >
         {checkoutLabel}
       </button>
+
+      {/* Trust badges */}
+      <div className="flex flex-col gap-2 rounded-xl bg-neutral-50 p-3">
+        {TRUST_BADGES.map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-2 text-xs font-medium text-slate-600">
+            <Icon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            {label}
+          </div>
+        ))}
+      </div>
 
       <p className="text-xs leading-5 text-slate-500">
         By proceeding to checkout, you agree to our{" "}

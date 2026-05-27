@@ -17,36 +17,48 @@ type FieldProps = {
   label: string;
   value: string;
   onChange?: (value: string) => void;
-  disabled?: boolean;
+  isEditing: boolean;
+  isSaving?: boolean;
   required?: boolean;
   type?: "text" | "email";
   placeholder?: string;
+  alwaysReadOnly?: boolean;
 };
 
 function ProfileField({
   label,
   value,
   onChange,
-  disabled = false,
+  isEditing,
+  isSaving = false,
   required = false,
   type = "text",
   placeholder,
+  alwaysReadOnly = false,
 }: FieldProps) {
+  const showInput = isEditing && !alwaysReadOnly;
+
   return (
-    <label className="block space-y-1.5">
+    <div className="space-y-1.5">
       <span className="text-sm font-medium text-slate-700">
         {label}
-        {required ? <span className="ml-1 text-rose-600">*</span> : null}
+        {required ? <span className="ml-1 text-rose-500">*</span> : null}
       </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange?.(event.target.value)}
-        disabled={disabled}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-slate-500"
-      />
-    </label>
+      {showInput ? (
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
+          disabled={isSaving}
+          placeholder={placeholder}
+          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+      ) : (
+        <p className="min-h-[2.5rem] rounded-lg bg-neutral-50 px-3 py-2.5 text-sm text-slate-800">
+          {value.trim() ? value : <span className="text-slate-400">—</span>}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -72,7 +84,7 @@ export function ProfileDetailsForm({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-neutral-100"
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-neutral-100"
             >
               Edit
             </button>
@@ -82,7 +94,7 @@ export function ProfileDetailsForm({
                 type="button"
                 onClick={onCancel}
                 disabled={isSaving}
-                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -90,7 +102,7 @@ export function ProfileDetailsForm({
                 type="button"
                 onClick={onSave}
                 disabled={isSaving}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </button>
@@ -110,22 +122,24 @@ export function ProfileDetailsForm({
           label="Full Name"
           value={values.name}
           onChange={(value) => onChange("name", value)}
-          disabled={!isEditing || isSaving}
+          isEditing={isEditing}
+          isSaving={isSaving}
           required
           placeholder="Enter your full name"
         />
         <ProfileField
           label="Email"
           value={values.email}
-          disabled
+          isEditing={isEditing}
           type="email"
-          placeholder="Email is read-only in v1"
+          alwaysReadOnly
         />
         <ProfileField
           label="Mobile Number"
           value={values.phone}
           onChange={(value) => onChange("phone", value)}
-          disabled={!isEditing || isSaving}
+          isEditing={isEditing}
+          isSaving={isSaving}
           required
           placeholder="e.g. +91 9876543210"
         />
@@ -139,7 +153,8 @@ export function ProfileDetailsForm({
               label="Address Line 1"
               value={values.addressLine1}
               onChange={(value) => onChange("addressLine1", value)}
-              disabled={!isEditing || isSaving}
+              isEditing={isEditing}
+              isSaving={isSaving}
               required
               placeholder="House no, street, area"
             />
@@ -149,7 +164,8 @@ export function ProfileDetailsForm({
               label="Address Line 2"
               value={values.addressLine2}
               onChange={(value) => onChange("addressLine2", value)}
-              disabled={!isEditing || isSaving}
+              isEditing={isEditing}
+              isSaving={isSaving}
               placeholder="Landmark (optional)"
             />
           </div>
@@ -157,28 +173,32 @@ export function ProfileDetailsForm({
             label="City"
             value={values.city}
             onChange={(value) => onChange("city", value)}
-            disabled={!isEditing || isSaving}
+            isEditing={isEditing}
+            isSaving={isSaving}
             required
           />
           <ProfileField
             label="State"
             value={values.state}
             onChange={(value) => onChange("state", value)}
-            disabled={!isEditing || isSaving}
+            isEditing={isEditing}
+            isSaving={isSaving}
             required
           />
           <ProfileField
             label="Postal Code"
             value={values.postalCode}
             onChange={(value) => onChange("postalCode", value)}
-            disabled={!isEditing || isSaving}
+            isEditing={isEditing}
+            isSaving={isSaving}
             required
           />
           <ProfileField
             label="Country"
             value={values.country}
             onChange={(value) => onChange("country", value)}
-            disabled={!isEditing || isSaving}
+            isEditing={isEditing}
+            isSaving={isSaving}
             required
           />
         </div>

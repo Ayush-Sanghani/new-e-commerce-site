@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { Card } from "@/components/home/ui/card";
 import { formatInr } from "@/lib/pricing";
 import type { CartItem } from "./types";
@@ -6,22 +7,33 @@ import type { CartItem } from "./types";
 type CartItemRowProps = {
   item: CartItem;
   isBusy?: boolean;
+  highlighted?: boolean;
   onDecrease: (productId: string) => void;
   onIncrease: (productId: string) => void;
   onRemove: (productId: string) => void;
 };
 
-export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: CartItemRowProps) {
+export function CartItemRow({
+  item,
+  isBusy,
+  highlighted,
+  onDecrease,
+  onIncrease,
+  onRemove,
+}: CartItemRowProps) {
   const onSale = item.discountPercentage > 0 && item.listPrice > item.unitPrice;
 
   return (
-    <Card as="article" className="p-4 sm:p-5">
+    <Card
+      as="article"
+      className={`p-4 sm:p-5 ${highlighted ? "ring-2 ring-red-300 bg-red-50/40" : ""}`}
+    >
       <div className="flex flex-col gap-4 sm:flex-row">
         <Link href={`/shop/${item.productId}`} className="shrink-0">
           <img
             src={item.imageUrl}
             alt={item.title}
-            className="h-28 w-full rounded-lg object-cover sm:w-32"
+            className="h-36 w-full rounded-xl object-cover sm:h-40 sm:w-44"
             loading="lazy"
           />
         </Link>
@@ -88,8 +100,9 @@ export function CartItemRow({ item, isBusy, onDecrease, onIncrease, onRemove }: 
               type="button"
               onClick={() => onRemove(item.productId)}
               disabled={isBusy}
-              className="text-sm font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <Trash2 className="h-3.5 w-3.5" />
               {isBusy ? "Updating..." : "Remove"}
             </button>
           </div>

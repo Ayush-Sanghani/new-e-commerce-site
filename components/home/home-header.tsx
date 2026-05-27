@@ -1,6 +1,10 @@
 import Link from "next/link";
-import { LogoutButton } from "@/app/home/logout-button";
+import { ShoppingCart } from "lucide-react";
+import { buildShopUrl } from "@/lib/shop/shop-url";
 import type { CategoryGroup } from "./types";
+import { AccountDropdown } from "./account-dropdown";
+import { NavSearch } from "./nav-search";
+import { WishlistNavLink } from "./wishlist-nav-link";
 
 type HomeHeaderProps = {
   displayName: string;
@@ -21,149 +25,53 @@ export function HomeHeader({
   isAuthenticated = true,
 }: HomeHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white">
-            🛍️
-          </div>
-          <p className="text-lg font-bold tracking-tight">DummyMart</p>
-        </div>
-
-        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-          <a href="/home" className="text-blue-700">
-            Home
-          </a>
-          <Link href="/shop" className="transition-colors hover:text-slate-900">
-            Shop
+    <header className="sticky top-0 z-50 border-b border-border/80 bg-white/95 shadow-sm backdrop-blur-md">
+      <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[72px] items-center gap-3 lg:gap-6">
+          <Link href="/home" className="flex shrink-0 items-center gap-2.5 transition hover:opacity-90">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-white shadow-md">
+              DM
+            </div>
+            <span className="hidden text-xl font-bold tracking-tight text-slate-900 sm:block">
+              DummyMart
+            </span>
           </Link>
+
+          <NavSearch className="hidden min-w-0 flex-1 lg:block lg:max-w-xl xl:max-w-2xl" />
+
+          <nav className="hidden items-center gap-1 xl:flex">
+            <Link
+              href="/home"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-primary"
+            >
+              Home
+            </Link>
+            <Link
+              href="/shop"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              Shop
+            </Link>
             <details className="group relative">
-            <summary className="list-none cursor-pointer transition-colors hover:text-slate-900">
-              Categories
-            </summary>
-            <div className="absolute left-0 top-8 z-50 hidden min-w-[620px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-lg group-open:block">
-              <div className="grid grid-cols-2 gap-4">
-                {categoryGroups.map((group) => (
-                  <div key={group.title}>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                      {group.title}
-                    </p>
-                    <ul className="space-y-1.5">
-                      {group.items.map((item) => (
-                        <li key={item.slug}>
-                          <a
-                            href={`/shop?category=${item.slug}`}
-                            className="text-sm text-slate-600 transition-colors hover:text-slate-900"
-                          >
-                            {item.label}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </details>
-          <Link href="/contact" className="transition-colors hover:text-slate-900">
-            Contact
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <a
-            href="/cart"
-            className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 text-slate-700 transition-colors hover:bg-neutral-100"
-            aria-label="Open cart"
-            title="Cart"
-          >
-            <span aria-hidden>🛒</span>
-            {cartCount > 0 ? (
-              <span className="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
-                {formatCartCount(cartCount)}
-              </span>
-            ) : null}
-          </a>
-
-          {isAuthenticated ? (
-            <>
-              <Link
-                href="/account"
-                className="hidden h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-blue-50 text-sm text-blue-700 transition-colors hover:bg-blue-100 sm:inline-flex"
-                aria-label={`Open ${displayName} profile`}
-                title="My Account"
-              >
-                <span aria-hidden>👤</span>
-              </Link>
-              <LogoutButton />
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="inline-flex h-9 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-neutral-100"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-              >
-                Register
-              </Link>
-            </div>
-          )}
-
-          <details className="relative md:hidden">
-            <summary className="grid h-9 w-9 list-none place-items-center rounded-lg border border-neutral-200 text-slate-700">
-              ☰
-            </summary>
-            <div className="absolute right-0 top-11 z-50 w-[84vw] max-w-sm rounded-2xl border border-neutral-200 bg-white p-4 shadow-lg">
-              <nav className="space-y-3 text-sm font-medium text-slate-700">
-                <a href="/home" className="block text-blue-700">
-                  Home
-                </a>
-                <Link href="/shop" className="block transition-colors hover:text-slate-900">
-                  Shop
-                </Link>
-                {isAuthenticated ? (
-                  <Link href="/account" className="block transition-colors hover:text-slate-900">
-                    Account
-                  </Link>
-                ) : (
-                  <>
-                    <Link href="/login" className="block transition-colors hover:text-slate-900">
-                      Login
-                    </Link>
-                    <Link href="/register" className="block transition-colors hover:text-slate-900">
-                      Register
-                    </Link>
-                  </>
-                )}
-                <Link href="/contact" className="block transition-colors hover:text-slate-900">
-                  Contact
-                </Link>
-              </nav>
-
-              <div className="mt-4 border-t border-neutral-200 pt-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                  Categories
-                </p>
-                <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+              <summary className="list-none cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+                Categories
+              </summary>
+              <div className="absolute left-0 top-full z-50 hidden min-w-[640px] rounded-2xl border border-border bg-white p-5 shadow-premium-hover group-open:block">
+                <div className="grid grid-cols-2 gap-6">
                   {categoryGroups.map((group) => (
                     <div key={group.title}>
-                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
                         {group.title}
                       </p>
-                      <ul className="space-y-1">
+                      <ul className="space-y-1.5">
                         {group.items.map((item) => (
                           <li key={item.slug}>
-                            <a
-                              href={`/shop?category=${item.slug}`}
-                              className="text-sm text-slate-600 transition-colors hover:text-slate-900"
+                            <Link
+                              href={buildShopUrl({ category: item.slug })}
+                              className="text-sm text-slate-600 transition hover:text-primary"
                             >
                               {item.label}
-                            </a>
+                            </Link>
                           </li>
                         ))}
                       </ul>
@@ -171,10 +79,112 @@ export function HomeHeader({
                   ))}
                 </div>
               </div>
-            </div>
-          </details>
+            </details>
+            <Link
+              href="/contact"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+            >
+              Contact
+            </Link>
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <WishlistNavLink />
+            <Link
+              href="/cart"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-primary"
+              aria-label={`Cart${cartCount > 0 ? `, ${cartCount} items` : ""}`}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+                  {formatCartCount(cartCount)}
+                </span>
+              ) : null}
+            </Link>
+            <AccountDropdown displayName={displayName} isAuthenticated={isAuthenticated} />
+            <MobileMenu
+              categoryGroups={categoryGroups}
+              isAuthenticated={isAuthenticated}
+              displayName={displayName}
+            />
+          </div>
+        </div>
+
+        <div className="pb-3 lg:hidden">
+          <NavSearch />
         </div>
       </div>
     </header>
+  );
+}
+
+function MobileMenu({
+  categoryGroups,
+  isAuthenticated,
+  displayName,
+}: {
+  categoryGroups: CategoryGroup[];
+  isAuthenticated: boolean;
+  displayName: string;
+}) {
+  return (
+    <details className="relative sm:hidden">
+      <summary className="grid h-10 w-10 list-none cursor-pointer place-items-center rounded-xl border border-border text-slate-700">
+        <span className="sr-only">Menu</span>
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+          <path strokeLinecap="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </summary>
+      <div className="absolute right-0 top-12 z-50 w-[min(100vw-2rem,320px)] rounded-2xl border border-border bg-white p-4 shadow-premium-hover">
+        <nav className="space-y-1 text-sm font-medium">
+          <Link href="/home" className="block rounded-lg px-3 py-2 text-primary">
+            Home
+          </Link>
+          <Link href="/shop" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+            Shop
+          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/account" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                Account ({displayName})
+              </Link>
+              <Link href="/orders" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                My Orders
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                Login
+              </Link>
+              <Link href="/register" className="block rounded-lg px-3 py-2 text-primary hover:bg-primary/5">
+                Register
+              </Link>
+            </>
+          )}
+        </nav>
+        <div className="mt-4 max-h-48 overflow-y-auto border-t border-border pt-4">
+          <p className="mb-2 text-xs font-bold uppercase text-primary">Categories</p>
+          {categoryGroups.map((group) => (
+            <div key={group.title} className="mb-3">
+              <p className="text-[11px] font-semibold text-slate-500">{group.title}</p>
+              <ul className="mt-1 space-y-0.5">
+                {group.items.slice(0, 4).map((item) => (
+                  <li key={item.slug}>
+                    <Link
+                      href={buildShopUrl({ category: item.slug })}
+                      className="text-sm text-slate-600 hover:text-primary"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </details>
   );
 }

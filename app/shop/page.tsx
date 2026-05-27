@@ -17,6 +17,9 @@ type ShopPageProps = {
     sort?: string | string[];
     search?: string | string[];
     page?: string | string[];
+    minPrice?: string | string[];
+    maxPrice?: string | string[];
+    inStock?: string | string[];
   }>;
 };
 
@@ -32,6 +35,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     category: firstString(params.category),
     sort: firstString(params.sort),
     page: firstString(params.page),
+    minPrice: firstString(params.minPrice),
+    maxPrice: firstString(params.maxPrice),
+    inStock: firstString(params.inStock),
   });
 
   const categoryLookup: ShopCategoryChip[] = categoryGroups.flatMap((group) =>
@@ -85,24 +91,29 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     error = "Failed to load products. Please try again.";
   }
 
-  const activeCategory =
-    normalized.categoryParam &&
-    categories.some((name) => name.toLowerCase() === normalized.categoryParam!.toLowerCase())
-      ? categories.find((name) => name.toLowerCase() === normalized.categoryParam!.toLowerCase())!
-      : "All";
+  const categoryChips = [
+    { value: "All", label: "All" },
+    ...categoryLookup.map((c) => ({ value: c.slug, label: c.name })),
+  ];
+
+  const activeCategoryValue = categorySlug ?? "All";
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       <ShopListingPage
         products={products}
         categories={categories}
+        categoryChips={categoryChips}
         total={total}
         page={page}
         totalPages={totalPages}
         error={error}
-        category={activeCategory}
+        category={activeCategoryValue}
         sort={normalized.sort}
         search={normalized.search}
+        minPrice={normalized.minPrice}
+        maxPrice={normalized.maxPrice}
+        inStock={normalized.inStock}
       />
     </div>
   );

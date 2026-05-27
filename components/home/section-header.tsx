@@ -1,24 +1,38 @@
+import Link from "next/link";
+
 type SectionHeaderProps = {
   title: string;
+  subtitle?: string;
   actionLabel?: string;
   actionHref?: string;
+  centered?: boolean;
 };
 
 export function SectionHeader({
   title,
+  subtitle,
   actionLabel,
-  actionHref = "#",
+  actionHref = "/shop",
+  centered = false,
 }: SectionHeaderProps) {
   return (
-    <div className="mb-5 flex items-end justify-between">
-      <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
+    <div
+      className={`mb-6 sm:mb-8 ${centered ? "text-center" : "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"}`}
+    >
+      <div>
+        <h2 className="text-section-title">{title}</h2>
+        {subtitle ? (
+          <p className="mt-1.5 text-sm text-slate-500 sm:text-base">{subtitle}</p>
+        ) : null}
+      </div>
       {actionLabel ? (
-        <a
+        <Link
           href={actionHref}
-          className="text-sm font-semibold text-blue-700 hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition hover:text-primary-hover hover:underline"
         >
           {actionLabel}
-        </a>
+          <span aria-hidden>→</span>
+        </Link>
       ) : null}
     </div>
   );

@@ -2,9 +2,38 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ShoppingBag } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
 import { ProfileDetailsForm } from "@/components/account/profile-details-form";
 import { AccountPayload, ProfileFormValues } from "@/components/account/types";
+import { formatInr } from "@/lib/pricing";
+
+type LastOrder = {
+  orderNumber: string;
+  total: number;
+  createdAt: string;
+  status: string;
+};
+
+function getInitials(name: string | null | undefined): string {
+  if (!name?.trim()) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+function orderStatusColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case "delivered": return "bg-emerald-100 text-emerald-700";
+    case "cancelled": return "bg-red-100 text-red-600";
+    case "pending_payment": return "bg-amber-100 text-amber-700";
+    default: return "bg-blue-100 text-blue-700";
+  }
+}
+
+function formatOrderStatus(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 const emptyForm: ProfileFormValues = {
   name: "",
@@ -63,6 +92,7 @@ export function AccountPageView() {
   const [accountData, setAccountData] = useState<AccountPayload | null>(null);
   const [formValues, setFormValues] = useState<ProfileFormValues>(emptyForm);
   const [initialValues, setInitialValues] = useState<ProfileFormValues>(emptyForm);
+  const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
 
   const hasChanges = useMemo(
     () => JSON.stringify(formValues) !== JSON.stringify(initialValues),
@@ -94,6 +124,20 @@ export function AccountPageView() {
       const values = toFormValues(data.data);
       setFormValues(values);
       setInitialValues(values);
+
+      // Fetch last order summary in parallel
+      try {
+        const ordersRes = await fetch("/api/orders", { method: "GET" });
+        const ordersData = (await ordersRes.json()) as {
+          success?: boolean;
+          data?: { orders?: LastOrder[] };
+        };
+        if (ordersData.success && ordersData.data?.orders?.length) {
+          setLastOrder(ordersData.data.orders[0]);
+        }
+      } catch {
+        // non-critical — silently ignore
+      }
     } catch {
       setErrorMessage("Network error while loading profile.");
     } finally {
@@ -217,30 +261,67 @@ export function AccountPageView() {
 
           <aside className="space-y-4">
             <section className="rounded-2xl border border-neutral-200 bg-white p-5">
-              <h2 className="text-base font-semibold text-slate-900">Account Info</h2>
+              {/* Avatar + name */}
+              <div className="flex flex-col items-center gap-2 border-b border-neutral-100 pb-4 text-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white shadow-sm">
+                  {getInitials(accountData.user.name)}
+                </span>
+                <p className="text-base font-semibold text-slate-900">
+                  {accountData.user.name ?? "No name set"}
+                </p>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                  Member since {formatDate(accountData.user.createdAt)}
+                </span>
+              </div>
+
               <dl className="mt-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-slate-500">Role</dt>
-                  <dd className="font-medium text-slate-900">{accountData.user.role}</dd>
+                  <dd className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-semibold capitalize text-slate-700">
+                    {accountData.user.role}
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-slate-500">Member Since</dt>
-                  <dd className="font-medium text-slate-900">{formatDate(accountData.user.createdAt)}</dd>
+                  <dt className="text-slate-500">Email</dt>
+                  <dd className="max-w-[10rem] truncate font-medium text-slate-900 text-right">
+                    {accountData.user.email}
+                  </dd>
                 </div>
               </dl>
             </section>
 
             <section className="rounded-2xl border border-neutral-200 bg-white p-5">
-              <h2 className="text-base font-semibold text-slate-900">Orders</h2>
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="h-4 w-4 text-slate-400" />
+                <h2 className="text-base font-semibold text-slate-900">Orders</h2>
+              </div>
               <p className="mt-2 text-sm text-slate-500">
                 View your order history and order details.
               </p>
               <Link
                 href="/orders"
-                className="mt-4 inline-flex rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-neutral-100"
+                className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-neutral-100"
               >
                 View My Orders
               </Link>
+
+              {lastOrder ? (
+                <div className="mt-3 rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-sm">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Last Order</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-800">#{lastOrder.orderNumber}</p>
+                      <p className="font-bold text-blue-700">{formatInr(lastOrder.total)}</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-slate-500">{formatDate(lastOrder.createdAt)}</p>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${orderStatusColor(lastOrder.status)}`}>
+                        {formatOrderStatus(lastOrder.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </section>
           </aside>
         </section>

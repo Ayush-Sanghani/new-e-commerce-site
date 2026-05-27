@@ -97,6 +97,10 @@ export function shopStateToApiSearchParams(input: {
       sp.set("sortKey", "rating");
       sp.set("sortOrder", "desc");
       break;
+    case "latest":
+      sp.set("sortKey", "createdAt");
+      sp.set("sortOrder", "desc");
+      break;
     default:
       break;
   }
@@ -122,6 +126,18 @@ type SerializedListItem = {
   category: { name: string };
   images: { url: string }[];
 };
+
+/** Human-readable label for category slugs or kebab-case names (e.g. womens-watches). */
+export function formatCategoryDisplayName(raw: string): string {
+  if (!raw.trim()) return raw;
+  return raw
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export function mapListItemToShopProduct(row: SerializedListItem): ShopProduct {
   const listPrice = Number(row.price);

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { mapProductRecordToDetail, mapRelatedRecord } from "@/components/product/mappers";
 import { ProductDetailView } from "@/components/product/product-detail-view";
+import { TrackRecentlyViewed } from "@/components/product/track-recently-viewed";
 import { getProductById, listProducts } from "@/lib/services/product-queries";
 import type { ProductListQuery } from "@/lib/validations/product-query";
 
@@ -43,6 +44,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
+      <TrackRecentlyViewed productId={id} />
       <ProductDetailView product={product} relatedProducts={relatedProducts} />
     </div>
   );
