@@ -47,7 +47,7 @@ export function OrderSummaryCard({
           <span>Total</span>
           <span>{formatInr(total)}</span>
         </div>
-        <p className="mt-1 text-xs text-slate-500">{currency}</p>
+        <p className="mt-1 text-xs text-slate-500">Currency: Indian Rupee ({currency})</p>
       </div>
     </section>
   );
