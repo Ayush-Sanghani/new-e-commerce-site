@@ -14,9 +14,9 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
+  ShoppingCart,
+  Heart,
   ShieldCheck,
-  Zap,
-  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGoogleLoginErrorMessage } from "@/lib/google-login-errors";
@@ -29,9 +29,9 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const features = [
-  { icon: ShieldCheck, label: "Secure JWT authentication" },
-  { icon: Users, label: "Role-based access control" },
-  { icon: Zap, label: "Lightning-fast responses" },
+  { icon: ShoppingCart, label: "Access your orders anytime" },
+  { icon: Heart,        label: "Save your wishlist" },
+  { icon: ShieldCheck,  label: "Secure & private checkout" },
 ];
 
 function LoginForm() {
@@ -91,24 +91,24 @@ function LoginForm() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
-              DummyApp
+              DummyMart
             </span>
           </div>
 
           {/* center content */}
           <div className="space-y-8">
             <div>
-              <p className="text-indigo-300 text-xs font-semibold uppercase tracking-[0.2em] mb-4">
+              <p className="text-indigo-300 text-base font-semibold mb-4">
                 Welcome back
               </p>
               <h2 className="text-4xl font-bold text-white leading-tight">
                 Sign in to
                 <br />
-                your workspace
+                DummyMart
               </h2>
               <p className="text-indigo-200/80 text-base mt-4 leading-relaxed">
-                Access your personalized dashboard and manage everything from
-                one secure place.
+                Shop smarter — track orders, save favourites, and checkout
+                securely from one place.
               </p>
             </div>
 
@@ -125,7 +125,7 @@ function LoginForm() {
           </div>
 
           <p className="text-indigo-400/60 text-xs">
-            © 2026 DummyApp. All rights reserved.
+            © 2026 DummyMart. All rights reserved.
           </p>
         </div>
       </div>
@@ -138,7 +138,7 @@ function LoginForm() {
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-900 font-bold text-xl">DummyApp</span>
+            <span className="text-slate-900 font-bold text-xl">DummyMart</span>
           </div>
 
           {/* card */}
@@ -183,8 +183,8 @@ function LoginForm() {
               href="/api/auth/google"
               className={cn(
                 "flex items-center justify-center gap-3 w-full py-2.5 px-4 rounded-xl text-sm font-semibold",
-                "border border-slate-200 text-slate-700 bg-white transition-all duration-150",
-                "hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]"
+                "border border-slate-300 text-slate-700 bg-white transition-all duration-150",
+                "shadow-sm hover:shadow-md hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98]"
               )}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
@@ -213,8 +213,8 @@ function LoginForm() {
                 <div className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs text-slate-400 font-medium uppercase tracking-wider">
-                  or with email
+                <span className="bg-white px-3 text-sm text-slate-500 font-medium">
+                  or sign in with email
                 </span>
               </div>
             </div>
@@ -313,9 +313,9 @@ function LoginForm() {
                 disabled={isLoading}
                 className={cn(
                   "w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white transition-all duration-150",
-                  "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]",
-                  "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2",
-                  "shadow-md shadow-indigo-500/20",
+                  "bg-blue-600 hover:bg-blue-700 active:scale-[0.98]",
+                  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                  "shadow-md shadow-blue-500/20",
                   "disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                 )}
               >
@@ -336,8 +336,8 @@ function LoginForm() {
                 <div className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs text-slate-400 font-medium uppercase tracking-wider">
-                  New here?
+                <span className="bg-white px-3 text-sm text-slate-500 font-medium">
+                  Don't have an account?
                 </span>
               </div>
             </div>
