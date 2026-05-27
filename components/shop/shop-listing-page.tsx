@@ -346,7 +346,7 @@ export function ShopListingPage({
               </div>
             </ShopFiltersPanel>
 
-            <div className="flex flex-wrap gap-2 border-t border-neutral-100 pt-4">
+            <div className="flex flex-wrap gap-x-2 gap-y-3 border-t border-neutral-100 pt-4">
             {categoryChips.map((chip) => {
               const isActive = chip.value === activeCategoryValue;
               const href =
@@ -434,9 +434,9 @@ export function ShopListingPage({
                     category: activeCategoryValue,
                     page: pageNumber,
                   })}
-                  className={`rounded-lg border px-3.5 py-1.5 text-sm transition duration-200 ${
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm transition duration-200 ${
                     isActive
-                      ? "border-blue-600 bg-blue-600 font-semibold text-white shadow-sm"
+                      ? "border-blue-600 bg-blue-600 font-bold text-white shadow-sm"
                       : "border-neutral-300 bg-white text-slate-600 hover:border-neutral-400 hover:bg-neutral-50 hover:shadow-sm"
                   }`}
                 >

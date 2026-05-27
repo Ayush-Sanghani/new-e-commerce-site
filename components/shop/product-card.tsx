@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ImageOff } from "lucide-react";
 import { addToCart } from "@/lib/cart-client";
 import { formatInr } from "@/lib/pricing";
 import { notifyCartUpdated } from "@/lib/cart-sync";
@@ -16,6 +17,7 @@ type ProductCardProps = {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -42,14 +44,22 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg">
-      <div className="relative overflow-hidden">
-        <Link href={`/shop/${product.id}`} className="relative block">
-          <img
-            src={product.imageUrl}
-            alt={product.title}
-            className="h-40 w-full object-cover transition duration-300 group-hover:scale-[1.02] sm:h-56"
-            loading="lazy"
-          />
+      <div className="relative h-40 overflow-hidden sm:h-56">
+        <Link href={`/shop/${product.id}`} className="block h-full">
+          {imageError ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-100">
+              <ImageOff className="h-10 w-10 text-neutral-300" />
+              <p className="text-xs font-medium text-neutral-400">Image unavailable</p>
+            </div>
+          ) : (
+            <img
+              src={product.imageUrl}
+              alt={product.title}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+              loading="lazy"
+              onError={() => setImageError(true)}
+            />
+          )}
           {product.badge ? (
             <span className="absolute left-3 top-3 rounded-md bg-orange-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
               {product.badge}
