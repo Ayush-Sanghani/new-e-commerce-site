@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { Lock, ScrollText, RotateCcw, ChevronRight } from "lucide-react";
 
 export default function ContactPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [question, setQuestion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,6 +23,7 @@ export default function ContactPage() {
 
     setIsSubmitting(false);
     setIsSubmitted(true);
+    setName("");
     setEmail("");
     setQuestion("");
   };
@@ -48,6 +51,21 @@ export default function ContactPage() {
             <h2 className="text-lg font-semibold text-slate-900">Send Us Your Question</h2>
 
             <div className="mt-4 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="contact-name" className="text-sm font-medium text-slate-700">
+                  Name
+                </label>
+                <input
+                  id="contact-name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Your full name"
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <label htmlFor="contact-email" className="text-sm font-medium text-slate-700">
                   Email
@@ -81,7 +99,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>
@@ -95,15 +113,47 @@ export default function ContactPage() {
 
         <section className="rounded-2xl border border-neutral-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-slate-900">Helpful Policies</h2>
-          <div className="mt-3 flex flex-wrap gap-3 text-sm">
-            <Link href="/privacy-policy" className="rounded-lg border border-neutral-300 px-3 py-1.5 text-slate-700 hover:bg-neutral-50">
-              Privacy Policy
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Link
+              href="/privacy-policy"
+              className="group flex items-start gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+            >
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-neutral-200 group-hover:ring-blue-200">
+                <Lock className="h-4 w-4 text-blue-600" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-blue-700">Privacy Policy</p>
+                <p className="mt-0.5 text-xs text-slate-500">How we handle your personal data</p>
+              </div>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400 group-hover:text-blue-500" />
             </Link>
-            <Link href="/terms-and-conditions" className="rounded-lg border border-neutral-300 px-3 py-1.5 text-slate-700 hover:bg-neutral-50">
-              Terms &amp; Conditions
+
+            <Link
+              href="/terms-and-conditions"
+              className="group flex items-start gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+            >
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-neutral-200 group-hover:ring-blue-200">
+                <ScrollText className="h-4 w-4 text-blue-600" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-blue-700">Terms &amp; Conditions</p>
+                <p className="mt-0.5 text-xs text-slate-500">Rules governing use of our platform</p>
+              </div>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400 group-hover:text-blue-500" />
             </Link>
-            <Link href="/return-refund-policy" className="rounded-lg border border-neutral-300 px-3 py-1.5 text-slate-700 hover:bg-neutral-50">
-              Return &amp; Refund Policy
+
+            <Link
+              href="/return-refund-policy"
+              className="group flex items-start gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+            >
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-neutral-200 group-hover:ring-blue-200">
+                <RotateCcw className="h-4 w-4 text-blue-600" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-800 group-hover:text-blue-700">Return &amp; Refund Policy</p>
+                <p className="mt-0.5 text-xs text-slate-500">Our policy on returns and refunds</p>
+              </div>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-neutral-400 group-hover:text-blue-500" />
             </Link>
           </div>
         </section>
