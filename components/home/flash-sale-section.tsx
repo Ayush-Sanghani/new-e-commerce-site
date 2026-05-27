@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Clock, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { HomeProduct } from "./types";
 import { HomeProductCard } from "./home-product-card";
 import { SectionContainer } from "./ui/section-container";
@@ -12,29 +12,35 @@ type FlashSaleSectionProps = {
   products: HomeProduct[];
 };
 
-function useCountdown(target: Date) {
+function useCountdown(targetTimestamp: number) {
   const [left, setLeft] = useState({ h: 0, m: 0, s: 0 });
 
   useEffect(() => {
     const tick = () => {
-      const diff = Math.max(0, target.getTime() - Date.now());
-      setLeft({
+      const diff = Math.max(0, targetTimestamp - Date.now());
+      const next = {
         h: Math.floor(diff / 3_600_000),
         m: Math.floor((diff % 3_600_000) / 60_000),
         s: Math.floor((diff % 60_000) / 1000),
-      });
+      };
+      setLeft((prev) =>
+        prev.h === next.h && prev.m === next.m && prev.s === next.s ? prev : next,
+      );
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [target]);
+  }, [targetTimestamp]);
 
   return left;
 }
 
 export function FlashSaleSection({ products }: FlashSaleSectionProps) {
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
+  const endOfDay = useMemo(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d.getTime();
+  }, []);
   const { h, m, s } = useCountdown(endOfDay);
 
   if (products.length === 0) return null;
