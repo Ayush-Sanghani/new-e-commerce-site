@@ -3,7 +3,13 @@ import { ShoppingCart } from "lucide-react";
 import { buildShopUrl } from "@/lib/shop/shop-url";
 import type { CategoryGroup } from "./types";
 import { AccountDropdown } from "./account-dropdown";
-import { NavSearch } from "./nav-search";
+import { MobileMenu } from "./mobile-menu";
+import {
+  HeaderSearchDesktop,
+  HeaderSearchMobilePanel,
+  HeaderSearchMobileTrigger,
+  HeaderSearchProvider,
+} from "./header-search";
 import { WishlistNavLink } from "./wishlist-nav-link";
 
 type HomeHeaderProps = {
@@ -26,6 +32,7 @@ export function HomeHeader({
 }: HomeHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-white/95 shadow-sm backdrop-blur-md">
+      <HeaderSearchProvider>
       <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8">
         <div className="flex h-[72px] items-center gap-3 lg:gap-6">
           <Link href="/home" className="flex shrink-0 items-center gap-2.5 transition hover:opacity-90">
@@ -37,7 +44,7 @@ export function HomeHeader({
             </span>
           </Link>
 
-          <NavSearch className="hidden min-w-0 flex-1 lg:block lg:max-w-xl xl:max-w-2xl" />
+          <HeaderSearchDesktop />
 
           <nav className="hidden items-center gap-1 xl:flex">
             <Link
@@ -89,6 +96,7 @@ export function HomeHeader({
           </nav>
 
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <HeaderSearchMobileTrigger />
             <WishlistNavLink />
             <Link
               href="/cart"
@@ -111,80 +119,10 @@ export function HomeHeader({
           </div>
         </div>
 
-        <div className="pb-3 lg:hidden">
-          <NavSearch />
-        </div>
+        <HeaderSearchMobilePanel />
       </div>
+      </HeaderSearchProvider>
     </header>
   );
 }
 
-function MobileMenu({
-  categoryGroups,
-  isAuthenticated,
-  displayName,
-}: {
-  categoryGroups: CategoryGroup[];
-  isAuthenticated: boolean;
-  displayName: string;
-}) {
-  return (
-    <details className="relative sm:hidden">
-      <summary className="grid h-10 w-10 list-none cursor-pointer place-items-center rounded-xl border border-border text-slate-700">
-        <span className="sr-only">Menu</span>
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-          <path strokeLinecap="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </summary>
-      <div className="absolute right-0 top-12 z-50 w-[min(100vw-2rem,320px)] rounded-2xl border border-border bg-white p-4 shadow-premium-hover">
-        <nav className="space-y-1 text-sm font-medium">
-          <Link href="/home" className="block rounded-lg px-3 py-2 text-primary">
-            Home
-          </Link>
-          <Link href="/shop" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-            Shop
-          </Link>
-          {isAuthenticated ? (
-            <>
-              <Link href="/account" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                Account ({displayName})
-              </Link>
-              <Link href="/orders" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                My Orders
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                Login
-              </Link>
-              <Link href="/register" className="block rounded-lg px-3 py-2 text-primary hover:bg-primary/5">
-                Register
-              </Link>
-            </>
-          )}
-        </nav>
-        <div className="mt-4 max-h-48 overflow-y-auto border-t border-border pt-4">
-          <p className="mb-2 text-xs font-bold uppercase text-primary">Categories</p>
-          {categoryGroups.map((group) => (
-            <div key={group.title} className="mb-3">
-              <p className="text-[11px] font-semibold text-slate-500">{group.title}</p>
-              <ul className="mt-1 space-y-0.5">
-                {group.items.slice(0, 4).map((item) => (
-                  <li key={item.slug}>
-                    <Link
-                      href={buildShopUrl({ category: item.slug })}
-                      className="text-sm text-slate-600 hover:text-primary"
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </details>
-  );
-}
