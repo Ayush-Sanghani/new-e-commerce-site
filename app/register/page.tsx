@@ -88,9 +88,9 @@ function PasswordStrengthBar({ password }: { password: string }) {
 }
 
 const steps = [
-  "Create your account",
-  "Verify your email",
-  "You're all set!",
+  { label: "Create your account", active: true  },
+  { label: "Verify your email",   active: false },
+  { label: "You're all set!",     active: false },
 ];
 
 export default function RegisterPage() {
@@ -150,56 +150,64 @@ export default function RegisterPage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
-              DummyApp
+              DummyMart
             </span>
           </div>
 
           {/* center */}
           <div className="space-y-8">
             <div>
-              <p className="text-purple-300 text-xs font-semibold uppercase tracking-[0.2em] mb-4">
+              <p className="text-purple-300 text-base font-semibold mb-4">
                 Get started
               </p>
               <h2 className="text-4xl font-bold text-white leading-tight">
-                Join us and
+                Join DummyMart
                 <br />
-                get started
+                today
               </h2>
               <p className="text-purple-200/80 text-base mt-4 leading-relaxed">
-                Create your free account in seconds and explore your new
-                dashboard.
+                Create your free account in seconds and start shopping smarter.
               </p>
             </div>
 
             {/* steps */}
-            <div className="space-y-4">
+            <div className="flex flex-col gap-0">
               {steps.map((step, i) => (
-                <div key={step} className="flex items-center gap-4">
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                      i === 0
-                        ? "bg-purple-500 text-white"
-                        : "bg-white/10 border border-white/20 text-purple-300"
+                <div key={step.label} className="flex gap-4">
+                  {/* number + connector */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 z-10",
+                        step.active
+                          ? "bg-purple-500 text-white"
+                          : "bg-white/10 border border-white/20 text-purple-300"
+                      )}
+                    >
+                      {i + 1}
+                    </div>
+                    {i < steps.length - 1 && (
+                      <div className="w-px flex-1 my-1 bg-white/15" />
                     )}
-                  >
-                    {i + 1}
                   </div>
-                  <span
-                    className={cn(
-                      "text-sm",
-                      i === 0 ? "text-white font-medium" : "text-purple-300/70"
-                    )}
-                  >
-                    {step}
-                  </span>
+                  {/* label */}
+                  <div className={cn("pb-5", i === steps.length - 1 && "pb-0")}>
+                    <span
+                      className={cn(
+                        "text-sm leading-[2rem]",
+                        step.active ? "text-white font-medium" : "text-purple-300/70"
+                      )}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
           <p className="text-purple-400/60 text-xs">
-            © 2026 DummyApp. All rights reserved.
+            © 2026 DummyMart. All rights reserved.
           </p>
         </div>
       </div>
@@ -212,7 +220,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-900 font-bold text-xl">DummyApp</span>
+            <span className="text-slate-900 font-bold text-xl">DummyMart</span>
           </div>
 
           {/* card */}
@@ -236,7 +244,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* name */}
               <div className="space-y-1.5">
                 <label
@@ -244,7 +252,9 @@ export default function RegisterPage() {
                   className="text-sm font-medium text-slate-700"
                 >
                   Full name{" "}
-                  <span className="text-slate-400 font-normal">(optional)</span>
+                  <span className="ml-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-normal text-slate-500">
+                    optional
+                  </span>
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -402,14 +412,14 @@ export default function RegisterPage() {
                   By creating an account you agree to our{" "}
                   <Link
                     href="/terms-and-conditions"
-                    className="font-medium text-violet-600 hover:underline"
+                    className="font-medium text-violet-600 underline underline-offset-2 hover:text-violet-800"
                   >
                     Terms of Service
                   </Link>{" "}
                   and{" "}
                   <Link
                     href="/privacy-policy"
-                    className="font-medium text-violet-600 hover:underline"
+                    className="font-medium text-violet-600 underline underline-offset-2 hover:text-violet-800"
                   >
                     Privacy Policy
                   </Link>
@@ -423,9 +433,9 @@ export default function RegisterPage() {
                 disabled={isLoading}
                 className={cn(
                   "w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white transition-all duration-150",
-                  "bg-violet-600 hover:bg-violet-700 active:scale-[0.98]",
-                  "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
-                  "shadow-md shadow-violet-500/20",
+                  "bg-blue-600 hover:bg-blue-700 active:scale-[0.98]",
+                  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                  "shadow-md shadow-blue-500/20",
                   "disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                 )}
               >
@@ -446,8 +456,8 @@ export default function RegisterPage() {
                 <div className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-xs text-slate-400 font-medium uppercase tracking-wider">
-                  Have an account?
+                <span className="bg-white px-3 text-sm text-slate-500 font-medium">
+                  Already have an account?
                 </span>
               </div>
             </div>
