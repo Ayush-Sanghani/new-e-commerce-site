@@ -1,9 +1,9 @@
 export type Category = {
   slug: string;
   name: string;
-  emoji: string;
-  items: string[];
   imageTintClass: string;
+  imageUrl: string;
+  productCount: number;
 };
 
 export type CategoryItem = {
@@ -16,24 +16,16 @@ export type CategoryGroup = {
   items: CategoryItem[];
 };
 
-export type FeaturedProduct = {
+export type HomeProduct = {
   id?: string;
   title: string;
   price: string;
   oldPrice?: string;
-  tag: string;
-  imageUrl: string;
-};
-
-export type NewArrivalProduct = {
-  id?: string;
-  title: string;
-  price: string;
-  oldPrice?: string;
+  tag?: string;
   badge?: string;
-  colors: string[];
-  sizes?: string[];
   imageUrl: string;
+  rating?: number;
+  discountPercent?: number;
 };
 
 export type ClientReview = {
@@ -41,4 +33,11 @@ export type ClientReview = {
   role: string;
   message: string;
   rating: number;
+  avatarUrl: string;
+};
+
+export type FeaturedBrand = {
+  name: string;
+  logo: string;
+  search: string;
 };

@@ -1,7 +1,8 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { BadgeCheck, Star } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Quote, Star } from "lucide-react";
 import type { ClientReview } from "./types";
 import { SectionContainer } from "./ui/section-container";
 
@@ -17,51 +18,76 @@ export function ClientReviewSection({ reviews }: ClientReviewSectionProps) {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % total);
-    }, 5000);
+    }, 5500);
     return () => window.clearInterval(timer);
   }, [total]);
 
   return (
-    <SectionContainer className="px-4 py-10 sm:px-6 lg:px-10 lg:py-14">
-      <div className="mx-auto max-w-5xl text-center">
-        <h2 className="text-4xl font-bold text-slate-800">Client Review</h2>
-        <p className="mt-2 text-sm text-slate-500">What say client about us</p>
+    <SectionContainer className="bg-slate-900 text-white">
+      <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-section-title text-white">What Our Customers Say</h2>
+          <p className="mt-2 text-slate-400">Real reviews from verified buyers</p>
+        </div>
 
-        <div className="relative mt-8 border border-neutral-200 bg-white px-6 py-8 sm:px-10">
-          <Quote className="absolute left-3 top-3 h-8 w-8 text-slate-400" />
-          <Quote className="absolute bottom-3 right-3 h-8 w-8 rotate-180 text-slate-400" />
+        <div className="relative mx-auto mt-10 max-w-3xl">
+          <AnimatePresence mode="wait">
+            <motion.article
+              key={active.name}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.4 }}
+              className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm sm:p-10"
+            >
+              <div className="flex flex-col items-center text-center sm:flex-row sm:items-start sm:text-left">
+                <img
+                  src={active.avatarUrl}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-full border-2 border-accent object-cover"
+                  loading="lazy"
+                />
+                <div className="mt-4 sm:mt-0 sm:ml-6">
+                  <div className="flex justify-center gap-1 sm:justify-start">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <Star
+                        key={idx}
+                        className={`h-4 w-4 ${
+                          idx < active.rating
+                            ? "fill-accent text-accent"
+                            : "text-slate-600"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <blockquote className="mt-4 text-lg leading-relaxed text-slate-200 sm:text-xl">
+                    &ldquo;{active.message}&rdquo;
+                  </blockquote>
+                  <div className="mt-5 flex flex-col items-center gap-1 sm:items-start">
+                    <h3 className="text-lg font-bold text-white">{active.name}</h3>
+                    <span className="inline-flex items-center gap-1 text-sm text-accent">
+                      <BadgeCheck className="h-4 w-4" />
+                      {active.role}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.article>
+          </AnimatePresence>
 
-          <p className="mx-auto max-w-3xl text-base leading-8 text-slate-600">{active.message}</p>
-
-          <h3 className="mt-5 text-3xl font-bold text-slate-800">{active.name}</h3>
-          <p className="mt-1 text-xl text-slate-500">{active.role}</p>
-
-          <div className="mt-3 flex items-center justify-center gap-1">
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <Star
-                key={`${active.name}-${idx}`}
-                className={`h-4 w-4 ${
-                  idx < active.rating ? "fill-rose-400 text-rose-400" : "text-slate-300"
+          <div className="mt-8 flex items-center justify-center gap-2">
+            {reviews.map((review, idx) => (
+              <button
+                key={review.name}
+                type="button"
+                aria-label={`Show review ${idx + 1}`}
+                onClick={() => setActiveIndex(idx)}
+                className={`h-1.5 rounded-full transition-all ${
+                  idx === activeIndex ? "w-8 bg-accent" : "w-6 bg-white/30 hover:bg-white/50"
                 }`}
               />
             ))}
           </div>
-        </div>
-
-        <div className="mt-7 flex items-center justify-center gap-2">
-          {reviews.map((review, idx) => (
-            <button
-              key={review.name}
-              type="button"
-              aria-label={`Show review ${idx + 1}`}
-              onClick={() => setActiveIndex(idx)}
-              className={`h-2.5 rounded-full transition ${
-                idx === activeIndex
-                  ? "w-8 bg-slate-800"
-                  : "w-2.5 bg-slate-300 hover:bg-slate-400"
-              }`}
-            />
-          ))}
         </div>
       </div>
     </SectionContainer>

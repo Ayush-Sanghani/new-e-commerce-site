@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { categoryGroups } from "@/components/home/data";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeHeader } from "@/components/home/home-header";
+import { MobileBottomNav } from "@/components/home/mobile-bottom-nav";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { verifyToken } from "@/lib/jwt";
 import { getCartForUser } from "@/lib/services/cart";
@@ -20,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DummyApp",
-  description: "Your personal workspace dashboard",
+  title: "DummyMart — Premium Online Shopping",
+  description: "Shop electronics, fashion, and home essentials with fast delivery and secure checkout.",
 };
 
 export default async function RootLayout({
@@ -59,6 +60,10 @@ export default async function RootLayout({
           />
           {children}
           <HomeFooter isAuthenticated={Boolean(payload)} />
+          <MobileBottomNav
+            cartCount={cartCount}
+            isAuthenticated={Boolean(payload)}
+          />
         </ToastProvider>
       </body>
     </html>

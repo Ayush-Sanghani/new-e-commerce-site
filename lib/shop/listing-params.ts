@@ -97,6 +97,10 @@ export function shopStateToApiSearchParams(input: {
       sp.set("sortKey", "rating");
       sp.set("sortOrder", "desc");
       break;
+    case "latest":
+      sp.set("sortKey", "createdAt");
+      sp.set("sortOrder", "desc");
+      break;
     default:
       break;
   }
