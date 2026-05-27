@@ -16,11 +16,14 @@ export function ClientReviewSection({ reviews }: ClientReviewSectionProps) {
   const active = reviews[activeIndex];
 
   useEffect(() => {
+    if (total <= 1) return;
     const timer = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % total);
     }, 5500);
     return () => window.clearInterval(timer);
   }, [total]);
+
+  if (total === 0 || !active) return null;
 
   return (
     <SectionContainer className="bg-slate-900 text-white">

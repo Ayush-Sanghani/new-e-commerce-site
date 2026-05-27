@@ -60,6 +60,7 @@ export function HeroSection({ slides }: HeroSectionProps) {
   const totalSlides = slidesToShow.length;
 
   useEffect(() => {
+    if (totalSlides <= 1) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % totalSlides);
     }, 6000);
@@ -67,7 +68,7 @@ export function HeroSection({ slides }: HeroSectionProps) {
   }, [totalSlides]);
 
   useEffect(() => {
-    if (activeIndex >= totalSlides) setActiveIndex(0);
+    if (totalSlides > 0 && activeIndex >= totalSlides) setActiveIndex(0);
   }, [activeIndex, totalSlides]);
 
   const activeSlide = useMemo(() => slidesToShow[activeIndex], [activeIndex, slidesToShow]);
