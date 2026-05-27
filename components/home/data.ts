@@ -6,48 +6,42 @@ export const categories: Category[] = [
     slug: "beauty",
     name: "Beauty & Personal Care",
     imageTintClass: "bg-rose-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/beauty.avif",
     productCount: 86,
   },
   {
     slug: "mens-shirts",
     name: "Fashion",
     imageTintClass: "bg-indigo-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/fation.avif",
     productCount: 142,
   },
   {
     slug: "smartphones",
     name: "Electronics",
     imageTintClass: "bg-sky-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/smartphone.avif",
     productCount: 120,
   },
   {
     slug: "furniture",
     name: "Home & Kitchen",
     imageTintClass: "bg-amber-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/kitchen.avif",
     productCount: 94,
   },
   {
     slug: "sports-accessories",
     name: "Sports & Automotive",
     imageTintClass: "bg-emerald-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/sprots.avif",
     productCount: 67,
   },
   {
     slug: "mens-watches",
     name: "Watches & Accessories",
     imageTintClass: "bg-purple-50",
-    imageUrl:
-      "https://images.unsplash.com/photo-1523170335258-f5ed11844cac?auto=format&fit=crop&w=600&q=80",
+    imageUrl: "/images/man's watch.webp",
     productCount: 58,
   },
 ];
