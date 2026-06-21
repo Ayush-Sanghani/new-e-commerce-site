@@ -10,11 +10,9 @@ import { defaultProductListQuery } from "@/lib/shop/listing-params";
 import type { ProductListItem } from "@/lib/services/product-queries";
 
 export type HomePageData = {
-  featuredProducts: HomeProduct[];
   bestSellers: HomeProduct[];
   trendingProducts: HomeProduct[];
   newArrivalProducts: HomeProduct[];
-  flashSaleProducts: HomeProduct[];
   catalogProducts: HomeProduct[];
   heroSlides: HeroSlide[];
   error: string | null;
@@ -30,17 +28,6 @@ function inStockBase() {
 function sliceProducts<T>(items: T[], start: number, count: number): T[] {
   if (items.length <= start) return items.slice(0, count);
   return items.slice(start, start + count);
-}
-
-function pickFlashSale(products: HomeProduct[], fallback: HomeProduct[]): HomeProduct[] {
-  const discounted = products.filter((p) => (p.discountPercent ?? 0) > 0);
-  if (discounted.length >= 4) return discounted.slice(0, 4);
-  if (discounted.length > 0) {
-    const ids = new Set(discounted.map((p) => p.id));
-    const rest = fallback.filter((p) => p.id && !ids.has(p.id));
-    return [...discounted, ...rest].slice(0, 4);
-  }
-  return fallback.slice(0, 4).map((p) => ({ ...p, tag: p.tag ?? "Flash Deal" }));
 }
 
 function buildHeroSlides(
@@ -80,25 +67,23 @@ function buildHeroSlides(
 }
 
 const empty: HomePageData = {
-  featuredProducts: [],
   bestSellers: [],
   trendingProducts: [],
   newArrivalProducts: [],
-  flashSaleProducts: [],
   catalogProducts: [],
   heroSlides: [],
   error: null,
 };
 
 /**
- * Loads all homepage product sections in four parallel DB queries.
+ * Loads all homepage product sections in three parallel DB queries.
  * Slices results so sections stay distinct without relying on page-2 offsets.
  */
 export async function fetchHomePageData(): Promise<HomePageData> {
   const base = inStockBase();
 
   try {
-    const [ratedResult, latestResult, salePoolResult, catalogResult] = await Promise.all([
+    const [ratedResult, latestResult, catalogResult] = await Promise.all([
       listProducts({
         ...base,
         sortKey: "rating",
@@ -111,13 +96,6 @@ export async function fetchHomePageData(): Promise<HomePageData> {
         sortKey: "createdAt",
         sortOrder: "desc",
         pageSize: 8,
-        page: 1,
-      }),
-      listProducts({
-        ...base,
-        sortKey: "rating",
-        sortOrder: "desc",
-        pageSize: 32,
         page: 1,
       }),
       listProducts({
@@ -136,7 +114,7 @@ export async function fetchHomePageData(): Promise<HomePageData> {
       mapToHomeProduct(row, "Trending")
     );
 
-    const featuredProducts = sliceProducts(
+    const topRatedFeatured = sliceProducts(
       ratedRows.map((row) => mapToFeaturedProduct(row)),
       0,
       4
@@ -160,11 +138,6 @@ export async function fetchHomePageData(): Promise<HomePageData> {
         ? sliceProducts(latestAsNew, 4, 4)
         : sliceProducts(latestAsNew, 0, 4);
 
-    const salePool = salePoolResult.products.map((row) =>
-      mapToHomeProduct(row as ProductListItem)
-    );
-    const flashSaleProducts = pickFlashSale(salePool, featuredProducts);
-
     const catalogProducts = catalogResult.products.map((row) =>
       mapToHomeProduct(row as ProductListItem)
     );
@@ -172,11 +145,9 @@ export async function fetchHomePageData(): Promise<HomePageData> {
     const heroSlides = buildHeroSlides(ratedRows[0], latestRows[0]);
 
     return {
-      featuredProducts,
-      bestSellers: bestSellersDistinct.length ? bestSellersDistinct : featuredProducts,
+      bestSellers: bestSellersDistinct.length ? bestSellersDistinct : topRatedFeatured,
       trendingProducts: trendingProducts.length ? trendingProducts : newArrivalProducts,
       newArrivalProducts,
-      flashSaleProducts,
       catalogProducts,
       heroSlides,
       error: null,

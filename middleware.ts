@@ -10,7 +10,8 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/forgot-password" ||
-    pathname === "/reset-password";
+    pathname === "/reset-password" ||
+    pathname === "/verify-email";
 
   
 
@@ -27,5 +28,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/forgot-password", "/reset-password"],
+  matcher: ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"],
 };

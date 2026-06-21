@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Star, StarHalf, Truck, Shield, Package, Clock, Phone } from "lucide-react";
+import { Truck, Shield, Package, Clock, Phone, FileText, CheckCircle2 } from "lucide-react";
 import { HomeButton } from "@/components/home/ui/button";
 import { Card } from "@/components/home/ui/card";
 import { useToast } from "@/components/ui/toast-provider";
@@ -17,21 +17,7 @@ type ProductDetailViewProps = {
   relatedProducts: RelatedProduct[];
 };
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((position) => {
-        if (rating >= position) {
-          return <Star key={position} className="h-4 w-4 fill-amber-400 text-amber-400" />;
-        }
-        if (rating >= position - 0.5) {
-          return <StarHalf key={position} className="h-4 w-4 fill-amber-400 text-amber-400" />;
-        }
-        return <Star key={position} className="h-4 w-4 fill-none text-amber-300" />;
-      })}
-    </span>
-  );
-}
+
 
 function getHighlightIcon(text: string) {
   const lower = text.toLowerCase();
@@ -156,11 +142,11 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
               {product.category}
             </p>
             <h2 className="text-2xl font-bold text-slate-900">{product.title}</h2>
-            <p className="flex items-center gap-1.5 text-sm text-slate-600">
-              <StarRating rating={product.rating} />
-              <span className="font-medium text-slate-700">{product.rating.toFixed(1)}</span>
-              <span className="text-slate-400">({product.reviewCount} reviews)</span>
-            </p>
+            {product.usesIndications && (
+              <p className="text-sm font-medium text-slate-600">
+                <span className="text-slate-500 font-normal">Uses:</span> {product.usesIndications}
+              </p>
+            )}
           </div>
 
           <div className="flex items-end gap-3">
@@ -215,7 +201,6 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
                 {item}
               </p>
             ))}
-            <p className="font-semibold text-emerald-800">Warranty: {product.warranty}</p>
           </div>
 
           <div className="space-y-3">
@@ -288,7 +273,65 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
           </div>
         </Card>
 
-        <Card as="section" className="space-y-3 p-5 sm:p-6">
+        {product.keyFeatures && product.keyFeatures.length > 0 && (
+          <Card as="section" className="lg:col-span-2 p-5 sm:p-6">
+             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+               <CheckCircle2 className="w-5 h-5 text-blue-600" /> Key Features
+             </h3>
+             <ul className="mt-4 space-y-2">
+               {product.keyFeatures.map((feature, i) => (
+                 <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
+                    <span className="text-blue-500 mt-0.5">•</span> <span>{feature}</span>
+                 </li>
+               ))}
+             </ul>
+          </Card>
+        )}
+
+        {product.keyBenefits && product.keyBenefits.length > 0 && (
+          <Card as="section" className="lg:col-span-2 p-5 sm:p-6">
+             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+               <CheckCircle2 className="w-5 h-5 text-blue-600" /> Key Benefits
+             </h3>
+             <ul className="mt-4 space-y-2">
+               {product.keyBenefits.map((benefit, i) => (
+                 <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
+                    <span className="text-blue-500 mt-0.5">•</span> <span>{benefit}</span>
+                 </li>
+               ))}
+             </ul>
+          </Card>
+        )}
+
+        {(product.directionsForUse || product.safetyInformation || product.storageConditions) && (
+          <Card as="section" className="lg:col-span-2 p-5 sm:p-6">
+             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+               <FileText className="w-5 h-5 text-blue-600" /> Additional Information
+             </h3>
+             <div className="mt-4 space-y-4 text-sm text-slate-600">
+               {product.directionsForUse && (
+                 <div>
+                   <span className="font-semibold text-slate-800">Directions for Use:</span>
+                   <p className="mt-1">{product.directionsForUse}</p>
+                 </div>
+               )}
+               {product.safetyInformation && (
+                 <div>
+                   <span className="font-semibold text-slate-800">Safety Information:</span>
+                   <p className="mt-1">{product.safetyInformation}</p>
+                 </div>
+               )}
+               {product.storageConditions && (
+                 <div>
+                   <span className="font-semibold text-slate-800">Storage Conditions:</span>
+                   <p className="mt-1">{product.storageConditions}</p>
+                 </div>
+               )}
+             </div>
+          </Card>
+        )}
+
+        <Card as="section" className="space-y-3 p-5 sm:p-6 h-fit">
           <h3 className="text-lg font-bold text-slate-900">Need Help?</h3>
           <p className="text-sm text-slate-600">
             Have questions about compatibility, delivery, or returns?

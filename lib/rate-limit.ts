@@ -3,7 +3,13 @@ import { Redis } from "@upstash/redis";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export type AuthRateLimitKind = "login" | "register" | "forgot-password" | "reset-password";
+export type AuthRateLimitKind =
+  | "login"
+  | "register"
+  | "forgot-password"
+  | "reset-password"
+  | "verify-email"
+  | "resend-verification";
 
 /** Per-IP limits for auth endpoints (Vercel-safe via Upstash Redis). */
 const LIMITS: Record<
@@ -14,6 +20,8 @@ const LIMITS: Record<
   register: { requests: 5, window: "1 h" },
   "forgot-password": { requests: 5, window: "1 h" },
   "reset-password": { requests: 5, window: "15 m" },
+  "verify-email": { requests: 5, window: "15 m" },
+  "resend-verification": { requests: 5, window: "1 h" },
 };
 
 let redisClient: Redis | null = null;

@@ -21,8 +21,11 @@ export async function upsertUserFromGoogleProfile(profile: GoogleProfile) {
   }
 
   if (resolution.action === "login") {
-    const user = await prisma.user.findUniqueOrThrow({
+    const user = await prisma.user.update({
       where: { id: resolution.userId },
+      data: {
+        emailVerifiedAt: new Date(),
+      },
       select: { id: true, email: true, role: true },
     });
     return { user } as const;
@@ -31,7 +34,10 @@ export async function upsertUserFromGoogleProfile(profile: GoogleProfile) {
   if (resolution.action === "link") {
     const user = await prisma.user.update({
       where: { id: resolution.userId },
-      data: { googleId: resolution.googleId },
+      data: {
+        googleId: resolution.googleId,
+        emailVerifiedAt: new Date(),
+      },
       select: { id: true, email: true, role: true },
     });
     return { user } as const;
@@ -42,6 +48,7 @@ export async function upsertUserFromGoogleProfile(profile: GoogleProfile) {
       email: resolution.email,
       name: resolution.name,
       googleId: resolution.googleId,
+      emailVerifiedAt: new Date(),
       role: Role.user,
     },
     select: { id: true, email: true, role: true },

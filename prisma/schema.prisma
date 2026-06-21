@@ -21,11 +21,25 @@ model User {
   password  String?
   googleId  String?  @unique
   role      Role     @default(user)
+  emailVerifiedAt DateTime?
   createdAt DateTime @default(now())
   cart      Cart?
   orders    Order[]
   profile   UserProfile?
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {
@@ -94,23 +108,32 @@ model Product {
   category              Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   price                 Decimal    @db.Decimal(10, 2)
   discountPercentage    Decimal    @db.Decimal(5, 2) @default(0)
-  rating                Decimal?   @db.Decimal(3, 2)
   stock                 Int        @default(0)
   sku                   String     @unique
   weight                Decimal?   @db.Decimal(10, 2)
   width                 Decimal?   @db.Decimal(10, 2)
   height                Decimal?   @db.Decimal(10, 2)
   depth                 Decimal?   @db.Decimal(10, 2)
-  warrantyInformation   String?
   shippingInformation   String?
   availabilityStatus    String     @default("In Stock")
   returnPolicy          String?
   minimumOrderQuantity  Int        @default(1)
   thumbnail             String?
-  barcode               String?
-  qrCode                String?
   brandId               String?
   brand                 Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
+  // Pharma-specific fields
+  keyFeatures           Json?
+  keyBenefits           Json?
+  directionsForUse      String?
+  safetyInformation     String?
+  usesIndications       String?
+  packSize              String?
+  manufacturer          String?
+  isSterile             Boolean    @default(false)
+  isSingleUse           Boolean    @default(false)
+  storageConditions     String?
+
   createdAt             DateTime   @default(now())
   updatedAt             DateTime   @updatedAt
 

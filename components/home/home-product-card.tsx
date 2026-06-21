@@ -7,6 +7,7 @@ import { Eye, Heart, ShoppingCart, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { addToCart } from "@/lib/cart-client";
 import { notifyCartUpdated } from "@/lib/cart-sync";
+import { FALLBACK_IMAGE } from "@/lib/product-image";
 import { cn } from "@/lib/utils";
 import { isInWishlist, toggleWishlistId } from "@/lib/wishlist-storage";
 import { useToast } from "@/components/ui/toast-provider";
@@ -20,7 +21,7 @@ type HomeProductCardProps = {
 export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
@@ -29,6 +30,15 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
   useEffect(() => {
     if (product.id) setWishlisted(isInWishlist(product.id));
   }, [product.id]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [product.imageUrl]);
+
+  const displayImageUrl = imageError ? FALLBACK_IMAGE : product.imageUrl;
+  const showRating =
+    product.rating != null && Number.isFinite(product.rating) && product.rating > 0;
+  const displayRating = showRating ? product.rating! : 0;
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,9 +80,6 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [quickViewOpen, closeQuickView]);
 
-  const rating = product.rating ?? 0;
-  const displayRating = Number.isFinite(rating) ? rating : 0;
-
   return (
     <>
       <motion.article
@@ -83,20 +90,14 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
         className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-premium transition-all duration-300 hover:-translate-y-1 hover:shadow-premium-hover"
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 sm:aspect-square">
-          {!imageLoaded ? (
-            <div className="absolute inset-0 animate-pulse bg-slate-200" aria-hidden />
-          ) : null}
           <Link href={href} className="block h-full w-full">
             <img
-              src={product.imageUrl}
+              src={displayImageUrl}
               alt={product.title}
               loading="lazy"
               decoding="async"
-              onLoad={() => setImageLoaded(true)}
-              className={cn(
-                "h-full w-full object-cover transition duration-500 group-hover:scale-110",
-                imageLoaded ? "opacity-100" : "opacity-0"
-              )}
+              onError={() => setImageError(true)}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
             />
           </Link>
 
@@ -152,20 +153,22 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
         </div>
 
         <div className="flex flex-1 flex-col p-4">
-          <div className="mb-1.5 flex items-center gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={cn(
-                  "h-3.5 w-3.5",
-                  i < Math.round(displayRating)
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-slate-200"
-                )}
-              />
-            ))}
-            <span className="ml-1 text-xs text-slate-500">({displayRating.toFixed(1)})</span>
-          </div>
+          {showRating ? (
+            <div className="mb-1.5 flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    i < Math.round(displayRating)
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-slate-200"
+                  )}
+                />
+              ))}
+              <span className="ml-1 text-xs text-slate-500">({displayRating.toFixed(1)})</span>
+            </div>
+          ) : null}
 
           <Link href={href}>
             <h3 className="line-clamp-2 min-h-[2.75rem] text-base font-semibold leading-snug text-slate-900 transition hover:text-primary">
@@ -216,7 +219,7 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={product.imageUrl}
+              src={displayImageUrl}
               alt=""
               className="aspect-video w-full object-cover"
             />

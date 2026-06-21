@@ -50,7 +50,7 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-white">
                 DM
               </div>
-              <span className="text-xl font-bold text-white">DummyMart</span>
+              <span className="text-xl font-bold text-white">VrajPharma</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
               Premium ecommerce for electronics, fashion, and home. Fast delivery,
@@ -139,8 +139,8 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
           <ul className="mt-3 space-y-1.5 text-sm text-slate-400">
             <li>2147 Main Street, New York, NY 10001</li>
             <li>
-              <a href="mailto:support@dummymart.com" className="hover:text-white">
-                support@dummymart.com
+              <a href="mailto:support@vrajpharma.com" className="hover:text-white">
+                support@vrajpharma.com
               </a>
             </li>
             <li>+1 (800) 123-4567</li>
@@ -161,7 +161,7 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
 
       <div className="border-t border-white/10">
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <p>© {new Date().getFullYear()} DummyMart. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} VrajPharma. All rights reserved.</p>
           <p className="flex flex-wrap gap-x-3 gap-y-1">
             <Link href="/privacy-policy" className="hover:text-white">
               Privacy

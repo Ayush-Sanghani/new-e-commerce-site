@@ -4,7 +4,6 @@ export type ProductDetail = {
   category: string;
   price: number;
   oldPrice?: number;
-  rating: number;
   reviewCount: number;
   stock: number;
   sku: string;
@@ -14,7 +13,16 @@ export type ProductDetail = {
   highlights: string[];
   specs: { label: string; value: string }[];
   deliveryInfo: string[];
-  warranty: string;
+  keyFeatures: string[];
+  keyBenefits: string[];
+  directionsForUse?: string;
+  safetyInformation?: string;
+  usesIndications?: string;
+  packSize?: string;
+  manufacturer?: string;
+  isSterile: boolean;
+  isSingleUse: boolean;
+  storageConditions?: string;
 };
 
 export type RelatedProduct = {

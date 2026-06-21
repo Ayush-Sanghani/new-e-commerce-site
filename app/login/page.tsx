@@ -37,7 +37,11 @@ const features = [
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
@@ -53,6 +57,8 @@ function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setServerError(null);
+    setResendMessage(null);
+    setNeedsVerification(false);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -64,12 +70,40 @@ function LoginForm() {
         router.push("/home");
         router.refresh();
       } else {
+        if (result.code === "email_not_verified") {
+          setNeedsVerification(true);
+          setVerificationEmail(data.email);
+        }
         setServerError(result.error || result.message || "Login failed. Please try again.");
       }
     } catch {
       setServerError("Network error. Please check your connection.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onResendVerification = async () => {
+    if (!verificationEmail) return;
+
+    setIsResending(true);
+    setResendMessage(null);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verificationEmail }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setResendMessage(result.message || "Verification email sent.");
+      } else {
+        setServerError(result.error || "Unable to resend email. Try again.");
+      }
+    } catch {
+      setServerError("Network error. Please check your connection.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -155,7 +189,7 @@ function LoginForm() {
               <div className="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                 <p className="text-emerald-700 text-sm font-medium">
-                  Account created! Please sign in.
+                  Account created! Check your email to verify before signing in.
                 </p>
               </div>
             )}
@@ -175,7 +209,25 @@ function LoginForm() {
                 <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">!</span>
                 </div>
-                <p className="text-red-700 text-sm">{serverError ?? googleError}</p>
+                <div className="text-left">
+                  <p className="text-red-700 text-sm">{serverError ?? googleError}</p>
+                  {needsVerification && (
+                    <button
+                      type="button"
+                      onClick={onResendVerification}
+                      disabled={isResending}
+                      className="mt-3 text-sm font-semibold text-red-800 underline underline-offset-2 disabled:opacity-60"
+                    >
+                      {isResending ? "Sending…" : "Resend verification email"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {resendMessage && (
+              <div className="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                <p className="text-emerald-700 text-sm">{resendMessage}</p>
               </div>
             )}
 

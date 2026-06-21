@@ -8,17 +8,40 @@ const productListSelect = {
   title: true,
   price: true,
   discountPercentage: true,
-  rating: true,
   thumbnail: true,
+  createdAt: true,
   category: { select: { name: true } },
   images: {
     orderBy: { sortOrder: "asc" as const },
     take: 1,
     select: { url: true },
   },
+  reviews: {
+    select: { rating: true },
+  },
 } satisfies Prisma.ProductSelect;
 
-export type ProductListItem = Prisma.ProductGetPayload<{ select: typeof productListSelect }>;
+export type ProductListItem = Omit<
+  Prisma.ProductGetPayload<{ select: typeof productListSelect }>,
+  "reviews"
+> & {
+  rating: number;
+};
+
+type ProductListRow = Prisma.ProductGetPayload<{ select: typeof productListSelect }>;
+
+function averageReviewRating(reviews: { rating: number }[]): number {
+  if (reviews.length === 0) return 0;
+  return reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+}
+
+function enrichListItem(row: ProductListRow): ProductListItem {
+  const { reviews, ...product } = serializeProduct(row) as ProductListRow;
+  return {
+    ...product,
+    rating: averageReviewRating(reviews),
+  };
+}
 
 function resolveSort(
   sortKey: ProductListQuery["sortKey"],
@@ -26,12 +49,30 @@ function resolveSort(
 ): Prisma.ProductOrderByWithRelationInput {
   const dir = sortOrder;
   const field =
-    sortKey === "all" ? "createdAt" : sortKey === "price" ? "price" : sortKey === "rating" ? "rating" : sortKey === "createdAt" ? "createdAt" : sortKey === "title" ? "title" : "stock";
+    sortKey === "all"
+      ? "createdAt"
+      : sortKey === "price"
+        ? "price"
+        : sortKey === "createdAt"
+          ? "createdAt"
+          : sortKey === "title"
+            ? "title"
+            : "stock";
 
-  if (field === "rating") {
-    return { rating: { sort: dir, nulls: "last" } };
-  }
   return { [field]: dir } as Prisma.ProductOrderByWithRelationInput;
+}
+
+function sortRowsByRating(
+  rows: ProductListRow[],
+  sortOrder: ProductListQuery["sortOrder"]
+): ProductListRow[] {
+  return [...rows].sort((a, b) => {
+    const ratingA = averageReviewRating(a.reviews);
+    const ratingB = averageReviewRating(b.reviews);
+    const byRating = sortOrder === "asc" ? ratingA - ratingB : ratingB - ratingA;
+    if (byRating !== 0) return byRating;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
 }
 
 function buildSearchWhere(
@@ -49,6 +90,8 @@ function buildSearchWhere(
         { title: contains },
         { description: contains },
         { sku: contains },
+        { usesIndications: contains },
+        { manufacturer: contains },
       ],
     };
   }
@@ -138,6 +181,25 @@ export function serializeProduct<T>(row: T): T {
 export async function listProducts(query: ProductListQuery) {
   const where = buildWhere(query);
   const skip = (query.page - 1) * query.pageSize;
+
+  if (query.sortKey === "rating") {
+    const rows = await prisma.product.findMany({
+      where,
+      select: productListSelect,
+    });
+    const sorted = sortRowsByRating(rows, query.sortOrder);
+    const total = sorted.length;
+    const pageItems = sorted.slice(skip, skip + query.pageSize).map(enrichListItem);
+
+    return {
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalPages: Math.ceil(total / query.pageSize) || 1,
+      products: pageItems,
+    };
+  }
+
   const orderBy = resolveSort(query.sortKey, query.sortOrder);
 
   const [total, rows] = await prisma.$transaction([
@@ -156,7 +218,7 @@ export async function listProducts(query: ProductListQuery) {
     page: query.page,
     pageSize: query.pageSize,
     totalPages: Math.ceil(total / query.pageSize) || 1,
-    products: rows.map((p) => serializeProduct(p as unknown as Record<string, unknown>)),
+    products: rows.map(enrichListItem),
   };
 }
 

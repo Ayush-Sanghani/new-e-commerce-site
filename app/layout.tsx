@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DummyMart — Premium Online Shopping",
-  description: "Shop electronics, fashion, and home essentials with fast delivery and secure checkout.",
+  title: "VrajPharma — Premium Online Shopping",
+  description: "Shop medical equipment and pharma essentials with fast delivery and secure checkout.",
 };
 
 export default async function RootLayout({
@@ -47,9 +47,10 @@ export default async function RootLayout({
   const cartCount = cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <ToastProvider>
           <HomeHeader

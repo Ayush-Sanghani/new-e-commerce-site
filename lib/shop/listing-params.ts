@@ -1,5 +1,6 @@
 import type { ShopProduct } from "@/components/shop/types";
 import { resolveCatalogPrices } from "@/lib/pricing";
+import { resolveProductImageUrl } from "@/lib/product-image";
 import { productListQuerySchema, type ProductListQuery } from "@/lib/validations/product-query";
 
 export type ShopCategoryChip = { id: string; name: string; slug: string };
@@ -143,10 +144,7 @@ export function mapListItemToShopProduct(row: SerializedListItem): ShopProduct {
   const listPrice = Number(row.price);
   const disc = Number(row.discountPercentage ?? 0);
   const { effectivePrice, oldPrice } = resolveCatalogPrices(listPrice, disc);
-  const imageUrl =
-    row.images?.[0]?.url?.trim() ||
-    row.thumbnail?.trim() ||
-    "https://placehold.co/600x400?text=No+image";
+  const imageUrl = resolveProductImageUrl(row.thumbnail, row.images);
   const badge = disc > 0 ? "Sale" : undefined;
   return {
     id: row.id,

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { attachAuthCookie } from "@/lib/auth-cookie";
+import { sendVerificationEmail } from "@/lib/email";
+import {
+  buildVerifyEmailUrl,
+  createEmailVerificationToken,
+} from "@/lib/email-verification";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { enforceAuthRateLimit } from "@/lib/rate-limit";
@@ -65,42 +69,96 @@ export async function POST(request: NextRequest) {
 
     const existing = await prisma.user.findUnique({
       where: { email: validated.email },
+      select: { id: true, email: true, name: true, emailVerifiedAt: true },
     });
-    if (existing) {
+    if (existing?.emailVerifiedAt) {
       return NextResponse.json(
         { success: false, error: "A user with this email already exists." },
         { status: 409 }
       );
     }
 
+    if (existing && !existing.emailVerifiedAt) {
+      const { rawToken, tokenHash, expiresAt } = createEmailVerificationToken();
+
+      await prisma.$transaction([
+        prisma.emailVerificationToken.deleteMany({ where: { userId: existing.id } }),
+        prisma.emailVerificationToken.create({
+          data: { userId: existing.id, tokenHash, expiresAt },
+        }),
+      ]);
+
+      const verifyUrl = buildVerifyEmailUrl(rawToken);
+      const emailResult = await sendVerificationEmail({
+        to: existing.email,
+        verifyUrl,
+        name: existing.name,
+      });
+
+      if (!emailResult.sent) {
+        console.error("Register: verification email not sent for", existing.email);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Check your email to verify your account.",
+        user: {
+          id: existing.id,
+          email: existing.email,
+          name: existing.name,
+        },
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(validated.password, SALT_ROUNDS);
 
-    const user = await prisma.user.create({
-      data: {
-        email: validated.email,
-        name: validated.name ?? null,
-        password: hashedPassword,
-        role: validated.role ?? "user",
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-      },
+    const { rawToken, tokenHash, expiresAt } = createEmailVerificationToken();
+
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: validated.email,
+          name: validated.name ?? null,
+          password: hashedPassword,
+          role: validated.role ?? "user",
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      await tx.emailVerificationToken.create({
+        data: { userId: created.id, tokenHash, expiresAt },
+      });
+
+      return created;
     });
 
-    const response = NextResponse.json({
+    const verifyUrl = buildVerifyEmailUrl(rawToken);
+    const emailResult = await sendVerificationEmail({
+      to: user.email,
+      verifyUrl,
+      name: user.name,
+    });
+
+    if (!emailResult.sent) {
+      console.error("Register: verification email not sent for", user.email);
+    }
+
+    return NextResponse.json({
       success: true,
-      message: "Registration successful.",
+      message: "Check your email to verify your account.",
       user,
     });
-
-    await attachAuthCookie(response, user);
-    return response;
   } catch (err) {
-    if (err instanceof Error && err.message.includes("JWT_SECRET")) {
+    if (
+      err instanceof Error &&
+      (err.message.includes("JWT_SECRET") || err.message.includes("NEXT_PUBLIC_APP_URL"))
+    ) {
       return NextResponse.json(
         { success: false, error: "Server configuration error." },
         { status: 500 }

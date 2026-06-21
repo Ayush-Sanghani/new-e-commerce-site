@@ -177,21 +177,6 @@ export function ShopListingPage({
 
   return (
     <main className="mx-auto w-full max-w-[1500px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-sm text-slate-500">
-          <Link href="/home" className="transition-colors hover:text-slate-800">
-            Home
-          </Link>{" "}
-          / <span className="text-slate-700">Shop</span>
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Product Listing
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Search, filter by category, price, and availability, and sort products.
-        </p>
-      </section>
-
       <ShopFiltersProvider
         defaultOpen={filtersDefaultOpen}
         activeCount={activeFilterCount}
@@ -319,7 +304,6 @@ export function ShopListingPage({
                   <option value="latest">Latest</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Top Rated</option>
                 </select>
               </div>
               <div className="flex flex-wrap gap-2 lg:pb-0.5">
@@ -345,29 +329,7 @@ export function ShopListingPage({
             </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-x-2 gap-y-3 border-t border-neutral-100 pt-4">
-                {categoryChips.map((chip) => {
-                  const isActive = chip.value === activeCategoryValue;
-                  const href =
-                    chip.value === "All"
-                      ? buildShopHref({ ...hrefBase, category: undefined })
-                      : buildShopHref({ ...hrefBase, category: chip.value });
 
-                  return (
-                    <Link
-                      key={chip.value}
-                      href={href}
-                      className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition duration-200 ${
-                        isActive
-                          ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-                          : "border-neutral-300 bg-white text-slate-700 hover:border-neutral-400 hover:bg-neutral-50 hover:shadow-sm"
-                      }`}
-                    >
-                      {chip.label}
-                    </Link>
-                  );
-                })}
-              </div>
             </ShopFiltersPanel>
           </form>
         </section>

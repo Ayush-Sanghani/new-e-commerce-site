@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import { addToCart } from "@/lib/cart-client";
 import { formatInr } from "@/lib/pricing";
+import { FALLBACK_IMAGE } from "@/lib/product-image";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import { formatCategoryDisplayName } from "@/lib/shop/listing-params";
 import { useToast } from "@/components/ui/toast-provider";
@@ -20,6 +21,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
+  const displayImageUrl = imageError ? FALLBACK_IMAGE : product.imageUrl;
+  const showRating = Number.isFinite(product.rating) && product.rating > 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -53,7 +56,7 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           ) : (
             <img
-              src={product.imageUrl}
+              src={displayImageUrl}
               alt={product.title}
               className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
               loading="lazy"
@@ -96,9 +99,11 @@ export function ProductCard({ product }: ProductCardProps) {
             </p>
           ) : null}
         </div>
-        <p className="text-xs text-slate-500 sm:text-sm">
-          Rating: {(Number.isFinite(product.rating) ? product.rating : 0).toFixed(1)} / 5
-        </p>
+        {showRating ? (
+          <p className="text-xs text-slate-500 sm:text-sm">
+            Rating: {product.rating.toFixed(1)} / 5
+          </p>
+        ) : null}
         <Link
           href={`/shop/${product.id}`}
           className="mt-auto inline-flex h-10 w-full items-center justify-center rounded-lg border border-neutral-300 bg-white text-xs font-semibold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 sm:h-11 sm:text-sm"

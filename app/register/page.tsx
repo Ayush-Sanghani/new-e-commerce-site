@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -87,25 +86,58 @@ function PasswordStrengthBar({ password }: { password: string }) {
   );
 }
 
-const steps = [
-  { label: "Create your account", active: true  },
-  { label: "Verify your email",   active: false },
-  { label: "You're all set!",     active: false },
+const stepLabels = [
+  "Create your account",
+  "Verify your email",
+  "You're all set!",
 ];
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [passwordValue, setPasswordValue] = useState("");
-  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema) });
+
+  const steps = stepLabels.map((label, i) => ({
+    label,
+    active: i + 1 <= currentStep,
+  }));
+
+  const onResend = async () => {
+    if (!registeredEmail) return;
+
+    setIsResending(true);
+    setResendMessage(null);
+    setServerError(null);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setResendMessage(result.message || "Verification email sent.");
+      } else {
+        setServerError(result.error || "Unable to resend email. Try again.");
+      }
+    } catch {
+      setServerError("Network error. Please check your connection.");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -122,8 +154,8 @@ export default function RegisterPage() {
       });
       const result = await res.json();
       if (res.ok) {
-        router.push("/home");
-        router.refresh();
+        setRegisteredEmail(data.email);
+        setCurrentStep(2);
       } else {
         setServerError(result.error || result.message || "Registration failed. Try again.");
       }
@@ -225,6 +257,59 @@ export default function RegisterPage() {
 
           {/* card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/80 border border-slate-100 p-8">
+            {currentStep === 2 ? (
+              <div className="text-center py-2">
+                <div className="w-16 h-16 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center mx-auto mb-6">
+                  <Mail className="w-8 h-8 text-violet-600" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900">Check your email</h1>
+                <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                  We sent a verification link to{" "}
+                  <span className="font-medium text-slate-700">{registeredEmail}</span>.
+                  Click the link to verify your account. It expires in 24 hours.
+                </p>
+
+                {serverError && (
+                  <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200 text-left">
+                    <p className="text-red-700 text-sm">{serverError}</p>
+                  </div>
+                )}
+
+                {resendMessage && (
+                  <div className="mt-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-left">
+                    <p className="text-emerald-700 text-sm">{resendMessage}</p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={onResend}
+                  disabled={isResending}
+                  className={cn(
+                    "mt-8 w-full py-2.5 px-4 rounded-xl font-semibold text-sm text-white transition-all duration-150",
+                    "bg-blue-600 hover:bg-blue-700 active:scale-[0.98]",
+                    "disabled:opacity-60 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {isResending ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending…
+                    </span>
+                  ) : (
+                    "Resend verification email"
+                  )}
+                </button>
+
+                <Link
+                  href="/login"
+                  className="mt-6 inline-block text-sm font-semibold text-violet-600 hover:text-violet-800"
+                >
+                  Back to Sign in
+                </Link>
+              </div>
+            ) : (
+              <>
             <div className="mb-7">
               <h1 className="text-2xl font-bold text-slate-900">
                 Create account
@@ -473,6 +558,8 @@ export default function RegisterPage() {
             >
               Sign in instead
             </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

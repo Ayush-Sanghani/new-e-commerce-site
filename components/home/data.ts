@@ -1,50 +1,4 @@
-import type { Category, CategoryGroup, ClientReview, FeaturedBrand } from "./types";
-
-/** Homepage category carousel (links use slugs from `categoryGroups` where possible). */
-export const categories: Category[] = [
-  {
-    slug: "beauty",
-    name: "Beauty & Personal Care",
-    imageTintClass: "bg-rose-50",
-    imageUrl: "/images/beauty.avif",
-    productCount: 86,
-  },
-  {
-    slug: "mens-shirts",
-    name: "Fashion",
-    imageTintClass: "bg-indigo-50",
-    imageUrl: "/images/fation.avif",
-    productCount: 142,
-  },
-  {
-    slug: "smartphones",
-    name: "Electronics",
-    imageTintClass: "bg-sky-50",
-    imageUrl: "/images/smartphone.avif",
-    productCount: 120,
-  },
-  {
-    slug: "furniture",
-    name: "Home & Kitchen",
-    imageTintClass: "bg-amber-50",
-    imageUrl: "/images/kitchen.avif",
-    productCount: 94,
-  },
-  {
-    slug: "sports-accessories",
-    name: "Sports & Automotive",
-    imageTintClass: "bg-emerald-50",
-    imageUrl: "/images/sprots.avif",
-    productCount: 67,
-  },
-  {
-    slug: "mens-watches",
-    name: "Watches & Accessories",
-    imageTintClass: "bg-purple-50",
-    imageUrl: "/images/man's watch.webp",
-    productCount: 58,
-  },
-];
+import type { CategoryGroup } from "./types";
 
 /** Nav mega-menu + shop category filter chips (shared with layout and `/shop`). */
 export const categoryGroups: CategoryGroup[] = [
@@ -97,45 +51,6 @@ export const categoryGroups: CategoryGroup[] = [
       { slug: "vehicle", label: "Vehicle" },
     ],
   },
-];
-
-export const clientReviews: ClientReview[] = [
-  {
-    name: "John Doe",
-    role: "Verified Buyer",
-    message:
-      "Outstanding quality and lightning-fast delivery. The checkout was seamless and packaging felt premium — exactly what I expect from a top-tier store.",
-    rating: 5,
-    avatarUrl:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    name: "Sarah Khan",
-    role: "Verified Buyer",
-    message:
-      "Great product selection and honest pricing. Support resolved my query within minutes. I've already placed three repeat orders.",
-    rating: 5,
-    avatarUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
-  },
-  {
-    name: "Amit Verma",
-    role: "Verified Buyer",
-    message:
-      "Clean shopping experience with real discounts. Returns were hassle-free. DummyMart has become my go-to for electronics and fashion.",
-    rating: 4,
-    avatarUrl:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80",
-  },
-];
-
-export const featuredBrands: FeaturedBrand[] = [
-  { name: "Apple", logo: "🍎", search: "apple" },
-  { name: "Samsung", logo: "📱", search: "samsung" },
-  { name: "Nike", logo: "✓", search: "nike" },
-  { name: "Sony", logo: "🎧", search: "sony" },
-  { name: "Adidas", logo: "👟", search: "adidas" },
-  { name: "Dell", logo: "💻", search: "dell" },
 ];
 
 export const SOCIAL_PROOF_STATS = {

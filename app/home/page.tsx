@@ -1,14 +1,4 @@
-import {
-  categories,
-  clientReviews,
-  featuredBrands,
-} from "@/components/home/data";
 import { BestSellersSection } from "@/components/home/best-sellers-section";
-import { CategorySection } from "@/components/home/category-section";
-import { ClientReviewSection } from "@/components/home/client-review-section";
-import { FeaturedBrandsSection } from "@/components/home/featured-brands-section";
-import { FeaturedProductsSection } from "@/components/home/featured-products-section";
-import { FlashSaleSection } from "@/components/home/flash-sale-section";
 import { HeroSection } from "@/components/home/hero-section";
 import { NewArrivalsSection } from "@/components/home/new-arrivals-section";
 import { NewsletterSection } from "@/components/home/newsletter-section";
@@ -20,11 +10,9 @@ import { fetchHomePageData } from "@/lib/home/fetch-home-page-data";
 
 export default async function HomePage() {
   const {
-    featuredProducts,
     bestSellers,
     trendingProducts,
     newArrivalProducts,
-    flashSaleProducts,
     catalogProducts,
     heroSlides,
     error,
@@ -45,17 +33,12 @@ export default async function HomePage() {
       ) : null}
       <main className="w-full space-y-2 sm:space-y-4">
         <HeroSection slides={heroSlides} />
-        <CategorySection categories={categories} />
-        <FlashSaleSection products={flashSaleProducts} />
-        <FeaturedProductsSection products={featuredProducts} />
-        <ServiceFeaturesSection />
         <BestSellersSection products={bestSellers} />
-        <SocialProofSection />
+        <ServiceFeaturesSection />
         <TrendingProductsSection products={trendingProducts} />
+        <SocialProofSection />
         <NewArrivalsSection products={newArrivalProducts} />
-        <FeaturedBrandsSection brands={featuredBrands} />
         <RecentlyViewedSection catalog={catalogProducts} />
-        <ClientReviewSection reviews={clientReviews} />
         <NewsletterSection />
       </main>
     </div>

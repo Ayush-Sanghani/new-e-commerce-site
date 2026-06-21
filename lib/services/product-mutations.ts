@@ -38,7 +38,6 @@ export async function createProduct(body: CreateProductBody) {
   const brandId = await assertBrandExists(body.brandId ?? null);
 
   const thumbnail = emptyToNull(body.thumbnail ?? undefined) ?? null;
-  const qrCode = emptyToNull(body.qrCode ?? undefined) ?? null;
 
   try {
     const product = await prisma.$transaction(async (tx) => {
@@ -51,20 +50,26 @@ export async function createProduct(body: CreateProductBody) {
           price: body.price,
           sku: body.sku.trim(),
           discountPercentage: body.discountPercentage ?? 0,
-          rating: body.rating ?? null,
           stock: body.stock ?? 0,
           weight: body.weight ?? null,
           width: body.width ?? null,
           height: body.height ?? null,
           depth: body.depth ?? null,
-          warrantyInformation: body.warrantyInformation ?? null,
           shippingInformation: body.shippingInformation ?? null,
           availabilityStatus: body.availabilityStatus ?? "In Stock",
           returnPolicy: body.returnPolicy ?? null,
           minimumOrderQuantity: 1,
           thumbnail,
-          barcode: body.barcode ?? null,
-          qrCode,
+          keyFeatures: body.keyFeatures ?? null,
+          keyBenefits: body.keyBenefits ?? null,
+          directionsForUse: body.directionsForUse ?? null,
+          safetyInformation: body.safetyInformation ?? null,
+          usesIndications: body.usesIndications ?? null,
+          packSize: body.packSize ?? null,
+          manufacturer: body.manufacturer ?? null,
+          isSterile: body.isSterile ?? false,
+          isSingleUse: body.isSingleUse ?? false,
+          storageConditions: body.storageConditions ?? null,
         },
       });
 
@@ -136,19 +141,25 @@ export async function updateProduct(id: string, body: UpdateProductBody) {
   if (body.price !== undefined) data.price = body.price;
   if (body.sku !== undefined) data.sku = body.sku.trim();
   if (body.discountPercentage !== undefined) data.discountPercentage = body.discountPercentage;
-  if (body.rating !== undefined) data.rating = body.rating;
   if (body.stock !== undefined) data.stock = body.stock;
   if (body.weight !== undefined) data.weight = body.weight;
   if (body.width !== undefined) data.width = body.width;
   if (body.height !== undefined) data.height = body.height;
   if (body.depth !== undefined) data.depth = body.depth;
-  if (body.warrantyInformation !== undefined) data.warrantyInformation = body.warrantyInformation;
   if (body.shippingInformation !== undefined) data.shippingInformation = body.shippingInformation;
   if (body.availabilityStatus !== undefined) data.availabilityStatus = body.availabilityStatus;
   if (body.returnPolicy !== undefined) data.returnPolicy = body.returnPolicy;
   if (body.thumbnail !== undefined) data.thumbnail = emptyToNull(body.thumbnail) ?? null;
-  if (body.barcode !== undefined) data.barcode = body.barcode;
-  if (body.qrCode !== undefined) data.qrCode = emptyToNull(body.qrCode) ?? null;
+  if (body.keyFeatures !== undefined) data.keyFeatures = body.keyFeatures === null ? null : body.keyFeatures;
+  if (body.keyBenefits !== undefined) data.keyBenefits = body.keyBenefits === null ? null : body.keyBenefits;
+  if (body.directionsForUse !== undefined) data.directionsForUse = body.directionsForUse;
+  if (body.safetyInformation !== undefined) data.safetyInformation = body.safetyInformation;
+  if (body.usesIndications !== undefined) data.usesIndications = body.usesIndications;
+  if (body.packSize !== undefined) data.packSize = body.packSize;
+  if (body.manufacturer !== undefined) data.manufacturer = body.manufacturer;
+  if (body.isSterile !== undefined) data.isSterile = body.isSterile;
+  if (body.isSingleUse !== undefined) data.isSingleUse = body.isSingleUse;
+  if (body.storageConditions !== undefined) data.storageConditions = body.storageConditions;
 
   try {
     await prisma.$transaction(async (tx) => {
