@@ -105,7 +105,7 @@ export async function openRazorpayCheckout(options: {
     amount: options.amount,
     currency: options.currency,
     order_id: options.razorpayOrderId,
-    name: "DummyMart",
+    name: "VrajPharma",
     handler: async (response: RazorpayPaymentResponse) => {
       const result = await verifyOrderPaymentClient(
         options.orderId,

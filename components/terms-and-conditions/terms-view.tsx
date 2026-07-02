@@ -99,7 +99,7 @@ export function TermsView() {
                   1. Introduction
                 </h2>
                 <p className="mt-3">
-                  Welcome to DummyMart. By accessing or using our website, you agree to be bound by these Terms and Conditions.
+                  Welcome to VrajPharma. By accessing or using our website, you agree to be bound by these Terms and Conditions.
                 </p>
                 <p className="mt-1">If you do not agree, please do not use our platform.</p>
               </section>
@@ -179,7 +179,7 @@ export function TermsView() {
                   8. Intellectual Property
                 </h2>
                 <p className="mt-3">
-                  All website content (logos, images, text, design) is owned by DummyMart. You may not copy,
+                  All website content (logos, images, text, design) is owned by VrajPharma. You may not copy,
                   reproduce, or use content without permission.
                 </p>
               </section>
@@ -217,8 +217,8 @@ export function TermsView() {
                 </h2>
                 <p className="mt-3">
                   Email:{" "}
-                  <a href="mailto:support@dummymart.com" className="font-medium text-blue-600 hover:underline">
-                    support@dummymart.com
+                  <a href="mailto:support@vrajpharma.com" className="font-medium text-blue-600 hover:underline">
+                    support@vrajpharma.com
                   </a>
                 </p>
               </section>

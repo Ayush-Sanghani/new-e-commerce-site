@@ -1,5 +1,5 @@
-const WISHLIST_KEY = "dummymart-wishlist";
-const RECENTLY_VIEWED_KEY = "dummymart-recently-viewed";
+const WISHLIST_KEY = "vrajpharma-wishlist";
+const RECENTLY_VIEWED_KEY = "vrajpharma-recently-viewed";
 const MAX_RECENT = 8;
 
 function readIds(key: string): string[] {

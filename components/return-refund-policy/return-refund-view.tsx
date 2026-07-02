@@ -211,8 +211,8 @@ export function ReturnRefundView() {
                 <p className="mt-3">For return requests:</p>
                 <p className="mt-1">
                   Email:{" "}
-                  <a href="mailto:support@dummymart.com" className="font-medium text-blue-600 hover:underline">
-                    support@dummymart.com
+                  <a href="mailto:support@vrajpharma.com" className="font-medium text-blue-600 hover:underline">
+                    support@vrajpharma.com
                   </a>
                 </p>
               </section>

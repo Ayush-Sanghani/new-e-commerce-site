@@ -65,7 +65,7 @@ function VerifyEmailForm() {
           <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-slate-900 font-bold text-xl">DummyMart</span>
+          <span className="text-slate-900 font-bold text-xl">VrajPharma</span>
         </div>
 
         {status === "loading" && (

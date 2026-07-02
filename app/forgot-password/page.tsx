@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
             <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm border border-white/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">DummyMart</span>
+            <span className="text-white font-bold text-xl tracking-tight">VrajPharma</span>
           </div>
 
           {/* center content */}
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
 
-          <p className="text-blue-400/60 text-xs">© 2026 DummyMart. All rights reserved.</p>
+          <p className="text-blue-400/60 text-xs">© 2026 VrajPharma. All rights reserved.</p>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-900 font-bold text-xl">DummyMart</span>
+            <span className="text-slate-900 font-bold text-xl">VrajPharma</span>
           </div>
 
           {/* card */}

@@ -41,7 +41,7 @@ export default function ContactPage() {
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
           <div className="rounded-2xl border border-neutral-200 bg-white p-6 sm:p-7">
             <h2 className="text-lg font-semibold text-slate-900">Support Details</h2>
-            <p className="mt-3 text-sm text-slate-600">Email: support@dummymart.com</p>
+            <p className="mt-3 text-sm text-slate-600">Email: support@vrajpharma.com</p>
           </div>
 
           <form

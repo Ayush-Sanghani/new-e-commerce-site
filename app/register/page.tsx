@@ -182,7 +182,7 @@ export default function RegisterPage() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
-              DummyMart
+              VrajPharma
             </span>
           </div>
 
@@ -193,7 +193,7 @@ export default function RegisterPage() {
                 Get started
               </p>
               <h2 className="text-4xl font-bold text-white leading-tight">
-                Join DummyMart
+                Join VrajPharma
                 <br />
                 today
               </h2>
@@ -239,7 +239,7 @@ export default function RegisterPage() {
           </div>
 
           <p className="text-purple-400/60 text-xs">
-            © 2026 DummyMart. All rights reserved.
+            © 2026 VrajPharma. All rights reserved.
           </p>
         </div>
       </div>
@@ -252,7 +252,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-900 font-bold text-xl">DummyMart</span>
+            <span className="text-slate-900 font-bold text-xl">VrajPharma</span>
           </div>
 
           {/* card */}

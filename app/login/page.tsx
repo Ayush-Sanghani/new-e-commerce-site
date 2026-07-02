@@ -125,7 +125,7 @@ function LoginForm() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
-              DummyMart
+              VrajPharma
             </span>
           </div>
 
@@ -138,7 +138,7 @@ function LoginForm() {
               <h2 className="text-4xl font-bold text-white leading-tight">
                 Sign in to
                 <br />
-                DummyMart
+                VrajPharma
               </h2>
               <p className="text-indigo-200/80 text-base mt-4 leading-relaxed">
                 Shop smarter — track orders, save favourites, and checkout
@@ -159,7 +159,7 @@ function LoginForm() {
           </div>
 
           <p className="text-indigo-400/60 text-xs">
-            © 2026 DummyMart. All rights reserved.
+            © 2026 VrajPharma. All rights reserved.
           </p>
         </div>
       </div>
@@ -172,7 +172,7 @@ function LoginForm() {
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-slate-900 font-bold text-xl">DummyMart</span>
+            <span className="text-slate-900 font-bold text-xl">VrajPharma</span>
           </div>
 
           {/* card */}
