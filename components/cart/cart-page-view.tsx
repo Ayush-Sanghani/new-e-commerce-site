@@ -20,7 +20,9 @@ import {
   type ClientErrorDisplay,
 } from "@/lib/client-api-errors";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { isPaymentsEnabled } from "@/lib/payments-config";
 import { OrderCancelButton } from "@/components/orders/order-cancel-button";
+import { PaymentsComingSoonModal } from "@/components/payments/payments-coming-soon-modal";
 import { mapApiCartPayload } from "./mappers";
 import { CartEmptyState } from "./cart-empty-state";
 import { CartErrorBanner } from "./cart-error-banner";
@@ -64,13 +66,17 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>(initialItems);
   const [summary, setSummary] = useState<CartSummary>(initialSummary);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
   const [errorDisplay, setErrorDisplay] = useState<ClientErrorDisplay | null>(null);
   const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [isPendingOrderConflict, setIsPendingOrderConflict] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [comingSoonOrder, setComingSoonOrder] = useState<{
+    orderId: string;
+    orderNumber?: string;
+  } | null>(null);
 
   const clearErrors = () => {
     setErrorDisplay(null);
@@ -98,7 +104,6 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
   };
 
   useEffect(() => {
-    void reloadCart();
     const onStorage = (event: StorageEvent) => {
       if (event.key === CART_UPDATED_KEY) {
         void reloadCart();
@@ -212,6 +217,10 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
     });
   };
 
+  const showPaymentsComingSoon = (orderId: string, orderNumber?: string) => {
+    setComingSoonOrder({ orderId, orderNumber });
+  };
+
   const startCheckout = async () => {
     if (isCheckingOut) return;
 
@@ -263,6 +272,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         setErrorDisplay(resolveCheckoutError(createRes.status, createData, lookups));
 
         if (
+          isPaymentsEnabled() &&
           orderId &&
           typeof pending.amount === "number" &&
           typeof pending.currency === "string" &&
@@ -278,6 +288,11 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
             razorpayOrderId: pending.razorpayOrderId,
             keyId: pending.keyId,
           });
+        } else if (orderId && !isPaymentsEnabled()) {
+          showPaymentsComingSoon(
+            orderId,
+            typeof pending.orderNumber === "string" ? pending.orderNumber : undefined
+          );
         }
         return;
       }
@@ -293,13 +308,33 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       const payload = createData.data as {
         orderId: string;
         orderNumber?: string;
-        amount: number;
+        amount?: number;
         currency: string;
-        razorpayOrderId: string;
-        keyId: string;
+        razorpayOrderId?: string;
+        keyId?: string;
+        paymentsEnabled?: boolean;
       };
 
       setPendingOrderId(payload.orderId);
+
+      if (!isPaymentsEnabled() || payload.paymentsEnabled === false) {
+        showPaymentsComingSoon(payload.orderId, payload.orderNumber);
+        return;
+      }
+
+      if (
+        typeof payload.amount !== "number" ||
+        typeof payload.razorpayOrderId !== "string" ||
+        typeof payload.keyId !== "string"
+      ) {
+        setErrorDisplay(
+          resolveCheckoutError(502, {
+            message: "Order was saved but payment setup failed. View your order or try again.",
+            data: { orderId: payload.orderId },
+          })
+        );
+        return;
+      }
 
       await openRazorpayCheckoutForOrder({
         orderId: payload.orderId,
@@ -389,6 +424,13 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
           />
         </section>
       ) : null}
+
+      <PaymentsComingSoonModal
+        open={comingSoonOrder !== null}
+        onClose={() => setComingSoonOrder(null)}
+        orderId={comingSoonOrder?.orderId}
+        orderNumber={comingSoonOrder?.orderNumber}
+      />
     </main>
   );
 }

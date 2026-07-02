@@ -6,6 +6,9 @@ export type ProductDetail = {
   oldPrice?: number;
   reviewCount: number;
   stock: number;
+  minimumOrderQuantity: number;
+  isPurchasable: boolean;
+  unavailabilityReason: string | null;
   sku: string;
   brand: string;
   description: string;

@@ -27,8 +27,12 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!product.isPurchasable) {
+      showToast(product.unavailabilityReason ?? "Product is currently unavailable.", "error");
+      return;
+    }
     setIsAdding(true);
-    const result = await addToCart(product.id, 1);
+    const result = await addToCart(product.id, product.minimumOrderQuantity);
     if (result.requiresAuth) {
       showToast(result.message, "error");
       router.push(`/login?next=${encodeURIComponent("/shop")}`);
@@ -73,11 +77,11 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3 opacity-100 transition duration-300 group-hover:translate-y-0 sm:opacity-0 sm:group-hover:opacity-100">
           <button
             type="button"
-            disabled={isAdding}
+            disabled={isAdding || !product.isPurchasable}
             onClick={(e) => void handleAddToCart(e)}
             className="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isAdding ? "Adding…" : "Add to cart"}
+            {isAdding ? "Adding…" : product.isPurchasable ? "Add to cart" : "Unavailable"}
           </button>
         </div>
       </div>

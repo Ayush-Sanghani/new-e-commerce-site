@@ -1,4 +1,9 @@
 import { resolveCatalogPrices } from "@/lib/pricing";
+import {
+  getUnavailabilityReason,
+  isProductPurchasable,
+  normalizeMinimumOrderQuantity,
+} from "@/lib/product-availability";
 import type { RelatedProduct, ProductDetail } from "./types";
 
 type ProductRecord = {
@@ -70,7 +75,11 @@ export function mapProductRecordToDetail(record: ProductRecord): ProductDetail {
   const images = Array.from(new Set([firstImage, ...gallery])).slice(0, 4);
   const reviewCount = record.reviews?.length ?? 0;
   const stock = record.stock ?? 0;
-  const minOrderQty = Math.max(record.minimumOrderQuantity ?? 1, 1);
+  const minOrderQty = normalizeMinimumOrderQuantity(record.minimumOrderQuantity);
+  const productAvailability = {
+    stock,
+    availabilityStatus: record.availabilityStatus,
+  };
 
   return {
     id: record.id,
@@ -80,6 +89,9 @@ export function mapProductRecordToDetail(record: ProductRecord): ProductDetail {
     oldPrice,
     reviewCount,
     stock,
+    minimumOrderQuantity: minOrderQty,
+    isPurchasable: isProductPurchasable(productAvailability),
+    unavailabilityReason: getUnavailabilityReason(productAvailability),
     sku: record.sku?.trim() || "N/A",
     brand: record.brand?.name?.trim() || "Unknown",
     description: record.description?.trim() || "No product description available.",

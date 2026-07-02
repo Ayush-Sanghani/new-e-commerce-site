@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import {
   AlertTriangle,
@@ -16,8 +15,10 @@ import { OrderPayNowButton } from "@/components/orders/order-pay-now-button";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderSummaryCard } from "@/components/orders/order-summary-card";
 import { PaymentSuccessBanner } from "@/components/orders/payment-success-banner";
-import { verifyToken } from "@/lib/jwt";
+import { PaymentsComingSoonNotice } from "@/components/payments/payments-coming-soon-notice";
+import { getSessionUserFromCookies } from "@/lib/auth";
 import { formatInr } from "@/lib/pricing";
+import { isPaymentsEnabled } from "@/lib/payments-config";
 import { getOrderForUser } from "@/lib/services/order";
 import type { OrderStatus } from "@prisma/client";
 
@@ -63,22 +64,12 @@ type OrderDetailPageProps = {
 };
 
 export default async function OrderDetailPage({ params, searchParams }: OrderDetailPageProps) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
-
-  if (!token) redirect("/login");
-
-  let userId: string;
-  try {
-    const payload = await verifyToken(token);
-    userId = payload.sub;
-  } catch {
-    redirect("/login");
-  }
+  const user = await getSessionUserFromCookies();
+  if (!user) redirect("/login");
 
   const { orderId } = await params;
   const { paid } = await searchParams;
-  const order = await getOrderForUser(userId, orderId);
+  const order = await getOrderForUser(user.id, orderId);
 
   if (!order) {
     notFound();
@@ -86,6 +77,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
 
   const showPaidBanner = paid === "1" && order.status === "paid";
   const showAwaitingPayment = order.status === "pending_payment";
+  const paymentsEnabled = isPaymentsEnabled();
   const address = order.shippingAddress;
 
   return (
@@ -263,7 +255,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                   Total due: {formatInr(order.total)}
                 </p>
                 <div className="mt-4 space-y-2">
-                  {order.checkout ? (
+                  {!paymentsEnabled ? (
+                    <PaymentsComingSoonNotice />
+                  ) : order.checkout ? (
                     <OrderPayNowButton
                       orderId={order.id}
                       orderNumber={order.orderNumber}
@@ -272,7 +266,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                       razorpayOrderId={order.checkout.razorpayOrderId}
                       keyId={order.checkout.keyId}
                     />
-                  ) : null}
+                  ) : (
+                    <PaymentsComingSoonNotice />
+                  )}
                   <OrderCancelButton orderId={order.id} />
                 </div>
               </section>

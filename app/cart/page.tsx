@@ -1,25 +1,15 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { mapApiCartPayload } from "@/components/cart/mappers";
 import { CartPageView } from "@/components/cart/cart-page-view";
 import { EMPTY_CART_SUMMARY } from "@/components/cart/types";
-import { verifyToken } from "@/lib/jwt";
+import { getSessionUserFromCookies } from "@/lib/auth";
 import { buildCartPayload, getCartForUser } from "@/lib/services/cart";
 
 export default async function CartPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
+  const user = await getSessionUserFromCookies();
+  if (!user) redirect("/login");
 
-  if (!token) redirect("/login");
-
-  let payload;
-  try {
-    payload = await verifyToken(token);
-  } catch {
-    redirect("/login");
-  }
-
-  const cart = await getCartForUser(payload.sub);
+  const cart = await getCartForUser(user.id);
   const built = buildCartPayload(cart);
   const { items, summary } = built ? mapApiCartPayload(built) : { items: [], summary: EMPTY_CART_SUMMARY };
 

@@ -48,7 +48,7 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
           <div className="lg:col-span-2">
             <Link href="/home" className="inline-flex items-center gap-2.5">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-white">
-                DM
+                VP
               </div>
               <span className="text-xl font-bold text-white">VrajPharma</span>
             </Link>
@@ -137,25 +137,12 @@ export function HomeFooter({ isAuthenticated = false }: HomeFooterProps) {
         <div className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-6">
           <h4 className="text-sm font-bold text-white">Contact</h4>
           <ul className="mt-3 space-y-1.5 text-sm text-slate-400">
-            <li>2147 Main Street, New York, NY 10001</li>
             <li>
               <a href="mailto:support@vrajpharma.com" className="hover:text-white">
                 support@vrajpharma.com
               </a>
             </li>
-            <li>+1 (800) 123-4567</li>
-            <li>Mon – Sat: 9:00 AM – 8:00 PM IST</li>
           </ul>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {PAYMENTS.map((name) => (
-              <span
-                key={name}
-                className="rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300"
-              >
-                {name}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 

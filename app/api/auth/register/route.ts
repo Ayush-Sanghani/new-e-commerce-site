@@ -7,14 +7,14 @@ import {
 } from "@/lib/email-verification";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
+import { validatePassword } from "@/lib/auth-password";
+import { isValidEmail } from "@/lib/auth-email";
 import { enforceAuthRateLimit } from "@/lib/rate-limit";
 
-const MIN_PASSWORD_LENGTH = 8;
 const SALT_ROUNDS = 10;
 
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
+const UNVERIFIED_EMAIL_REGISTER_MESSAGE =
+  "An account with this email is pending verification. Check your inbox or use resend verification on the login page.";
 
 function validateBody(body: unknown): { name?: string; email: string; password: string; role?: Role } | { error: string } {
   if (typeof body !== "object" || body === null) {
@@ -28,16 +28,14 @@ function validateBody(body: unknown): { name?: string; email: string; password: 
   if (!isValidEmail(email)) {
     return { error: "Invalid email format." };
   }
-  if (typeof password !== "string" || !password) {
-    return { error: "Password is required." };
-  }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
+  const passwordResult = validatePassword(typeof password === "string" ? password : "");
+  if (!passwordResult.ok) {
+    return { error: passwordResult.error };
   }
 
   const result: { name?: string; email: string; password: string; role?: Role } = {
     email: email.trim().toLowerCase(),
-    password,
+    password: password as string,
   };
   if (typeof name === "string" && name.trim()) result.name = name.trim();
   // if (role === "admin" || role === "user") result.role = role;
@@ -79,35 +77,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (existing && !existing.emailVerifiedAt) {
-      const { rawToken, tokenHash, expiresAt } = createEmailVerificationToken();
-
-      await prisma.$transaction([
-        prisma.emailVerificationToken.deleteMany({ where: { userId: existing.id } }),
-        prisma.emailVerificationToken.create({
-          data: { userId: existing.id, tokenHash, expiresAt },
-        }),
-      ]);
-
-      const verifyUrl = buildVerifyEmailUrl(rawToken);
-      const emailResult = await sendVerificationEmail({
-        to: existing.email,
-        verifyUrl,
-        name: existing.name,
-      });
-
-      if (!emailResult.sent) {
-        console.error("Register: verification email not sent for", existing.email);
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "Check your email to verify your account.",
-        user: {
-          id: existing.id,
-          email: existing.email,
-          name: existing.name,
+      return NextResponse.json(
+        {
+          success: false,
+          error: UNVERIFIED_EMAIL_REGISTER_MESSAGE,
+          code: "email_pending_verification",
         },
-      });
+        { status: 409 }
+      );
     }
 
     const hashedPassword = await bcrypt.hash(validated.password, SALT_ROUNDS);

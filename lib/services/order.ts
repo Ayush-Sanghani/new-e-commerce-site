@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { isPaymentsEnabled } from "@/lib/payments-config";
 import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 import {
   computeLineTotal,
@@ -124,7 +125,9 @@ export async function getOrderForUser(
 
   const latestPayment = order.payments[0];
   const checkout =
-    order.status === OrderStatus.pending_payment && order.razorpayOrderId
+    isPaymentsEnabled() &&
+    order.status === OrderStatus.pending_payment &&
+    order.razorpayOrderId
       ? {
           amount: rupeesToPaise(order.total),
           currency: order.currency,
@@ -193,10 +196,11 @@ export type CreateOrderFromCartResult =
       data: {
         orderId: string;
         orderNumber: string;
-        amount: number;
         currency: string;
-        razorpayOrderId: string;
-        keyId: string;
+        paymentsEnabled: boolean;
+        amount?: number;
+        razorpayOrderId?: string;
+        keyId?: string;
       };
     }
   | { ok: false; error: "empty_cart" }
@@ -379,6 +383,18 @@ export async function createOrderFromCart(
     return { orderId: order.id };
   });
 
+  if (!isPaymentsEnabled()) {
+    return {
+      ok: true,
+      data: {
+        orderId,
+        orderNumber,
+        currency: "INR",
+        paymentsEnabled: false,
+      },
+    };
+  }
+
   const rz = getRazorpay();
   try {
     const receipt = orderNumber.slice(0, 40);
@@ -405,6 +421,7 @@ export async function createOrderFromCart(
         currency: "INR",
         razorpayOrderId: rzOrder.id,
         keyId: getRazorpayKeyId(),
+        paymentsEnabled: true,
       },
     };
   } catch (err) {

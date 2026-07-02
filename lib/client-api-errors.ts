@@ -13,6 +13,7 @@ export type ClientErrorKind =
   | "empty_cart"
   | "insufficient_stock"
   | "minimum_quantity"
+  | "not_available"
   | "incomplete_profile"
   | "razorpay_failed"
   | "pending_order_exists"
@@ -63,6 +64,9 @@ function inferCartItemCode(
   }
   if (message.includes("Minimum order quantity") || body.data?.minimumOrderQuantity != null) {
     return "minimum_quantity";
+  }
+  if (message.includes("cannot be added to cart") || body.data?.code === "not_available") {
+    return "not_available";
   }
   if (status === 404 && message.includes("Product not found")) return "product_not_found";
   if (status === 401) return "unauthorized";
@@ -174,6 +178,15 @@ export function resolveCartItemPatchError(
           ? `${title} requires a minimum quantity of ${min}.`
           : `${title} is below the minimum order quantity.`),
       links: [productLink(productId)],
+      highlightProductId: productId,
+    };
+  }
+
+  if (code === "not_available") {
+    return {
+      kind: "not_available",
+      message: apiMessage || `${title} is currently unavailable.`,
+      links: [productLink(productId), SHOP_LINK],
       highlightProductId: productId,
     };
   }

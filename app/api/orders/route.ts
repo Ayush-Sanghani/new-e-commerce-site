@@ -161,7 +161,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: "Order created. Complete payment.",
+        message: result.data.paymentsEnabled
+          ? "Order created. Complete payment."
+          : "Order created. Online payment is coming soon.",
         data: result.data,
       },
       { status: 201 }

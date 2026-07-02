@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ShoppingBag, ArrowRight, CreditCard } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
-import { verifyToken } from "@/lib/jwt";
+import { getSessionUserFromCookies } from "@/lib/auth";
 import { formatInr } from "@/lib/pricing";
+import { isPaymentsEnabled } from "@/lib/payments-config";
 import { listOrdersForUser } from "@/lib/services/order";
 
 function formatOrderDate(iso: string): string {
@@ -18,20 +18,11 @@ function formatOrderDate(iso: string): string {
 }
 
 export default async function OrdersPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth-token")?.value;
+  const user = await getSessionUserFromCookies();
+  if (!user) redirect("/login");
 
-  if (!token) redirect("/login");
-
-  let userId: string;
-  try {
-    const payload = await verifyToken(token);
-    userId = payload.sub;
-  } catch {
-    redirect("/login");
-  }
-
-  const orders = await listOrdersForUser(userId);
+  const orders = await listOrdersForUser(user.id);
+  const paymentsEnabled = isPaymentsEnabled();
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
@@ -93,13 +84,20 @@ export default async function OrdersPage() {
                         <p className="text-lg font-bold text-slate-900">{formatInr(order.total)}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           {order.status === "pending_payment" ? (
-                            <Link
-                              href={`/orders/${order.id}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                            >
-                              <CreditCard className="h-3.5 w-3.5" />
-                              Pay Now
-                            </Link>
+                            paymentsEnabled ? (
+                              <Link
+                                href={`/orders/${order.id}`}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                              >
+                                <CreditCard className="h-3.5 w-3.5" />
+                                Pay Now
+                              </Link>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+                                <CreditCard className="h-3.5 w-3.5" />
+                                Payment soon
+                              </span>
+                            )
                           ) : null}
                           <Link
                             href={`/orders/${order.id}`}

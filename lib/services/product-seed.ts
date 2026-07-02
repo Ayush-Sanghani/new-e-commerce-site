@@ -1,6 +1,24 @@
 import { prisma } from "@/lib/db";
 
-const PHARMA_PRODUCTS = [
+type PharmaSeedProduct = {
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  brand: string;
+  sku: string;
+  keyFeatures: string[];
+  keyBenefits: string[];
+  directionsForUse: string | null;
+  safetyInformation: string | null;
+  usesIndications: string | null;
+  packSize: string;
+  isSterile: boolean;
+  isSingleUse: boolean;
+  images: string[];
+};
+
+const PHARMA_PRODUCTS: PharmaSeedProduct[] = [
   {
     title: "Ankle Binder",
     description: "Tynor D-01 Ankle Binder is an effective device to support, compress and partially immobilize the ankle following injury or sprain to control pain, oedema or inflammation. Composed of two components...",
@@ -143,7 +161,7 @@ function categoryToSlug(category: string): string {
   return category.toLowerCase().trim().replace(/\s+/g, "-");
 }
 
-export async function seedProductsFromDummyJson(): Promise<{
+export async function seedPharmaCatalog(): Promise<{
   success: boolean;
   message: string;
   created: number;
@@ -177,7 +195,10 @@ export async function seedProductsFromDummyJson(): Promise<{
   };
 }
 
-async function upsertOneProduct(p: any): Promise<"created" | "updated"> {
+/** @deprecated Use seedPharmaCatalog — kept for backwards compatibility. */
+export const seedProductsFromDummyJson = seedPharmaCatalog;
+
+async function upsertOneProduct(p: PharmaSeedProduct): Promise<"created" | "updated"> {
   const slug = categoryToSlug(p.category);
 
   const category = await prisma.category.upsert({
@@ -199,14 +220,13 @@ async function upsertOneProduct(p: any): Promise<"created" | "updated"> {
 
   const existing = await prisma.product.findUnique({ where: { sku: p.sku } });
 
-  const productData = {
+  const sharedProductData = {
     title: p.title,
     description: p.description,
     categoryId: category.id,
     brandId,
     price: p.price,
     sku: p.sku,
-    stock: 100, // default stock 100
     keyFeatures: p.keyFeatures,
     keyBenefits: p.keyBenefits,
     directionsForUse: p.directionsForUse,
@@ -216,7 +236,7 @@ async function upsertOneProduct(p: any): Promise<"created" | "updated"> {
     isSterile: p.isSterile,
     isSingleUse: p.isSingleUse,
     availabilityStatus: "In Stock",
-    thumbnail: p.images[0], // using first image as thumbnail
+    thumbnail: p.images[0],
   };
 
   let productId: string;
@@ -224,14 +244,17 @@ async function upsertOneProduct(p: any): Promise<"created" | "updated"> {
   if (existing) {
     await prisma.product.update({
       where: { id: existing.id },
-      data: productData,
+      data: sharedProductData,
     });
     productId = existing.id;
 
     await prisma.productImage.deleteMany({ where: { productId } });
   } else {
     const product = await prisma.product.create({
-      data: productData,
+      data: {
+        ...sharedProductData,
+        stock: 100,
+      },
     });
     productId = product.id;
   }

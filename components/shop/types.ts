@@ -7,4 +7,8 @@ export type ShopProduct = {
   rating: number;
   imageUrl: string;
   badge?: string;
+  stock: number;
+  minimumOrderQuantity: number;
+  isPurchasable: boolean;
+  unavailabilityReason: string | null;
 };

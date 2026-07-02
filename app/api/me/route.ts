@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { enforceApiRateLimit } from "@/lib/rate-limit";
 import { updateProfileBodySchema } from "@/lib/validations/profile";
 
 function emptyToNull(value: string | undefined): string | null | undefined {
@@ -81,6 +82,9 @@ export async function PATCH(request: NextRequest) {
       { status: 401 }
     );
   }
+
+  const limited = await enforceApiRateLimit(request, "profile-update");
+  if (limited) return limited;
 
   let body: unknown = {};
   try {

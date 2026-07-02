@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME } from "@/lib/auth-constants";
+import { clearAuthCookie } from "@/lib/auth-cookie";
 
 export async function POST() {
   const response = NextResponse.json({
@@ -7,13 +7,6 @@ export async function POST() {
     message: "Logged out successfully.",
   });
 
-  response.cookies.set(AUTH_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
-
+  clearAuthCookie(response);
   return response;
 }

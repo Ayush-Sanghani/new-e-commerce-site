@@ -6,7 +6,9 @@ import {
   resolvePaymentCancelledError,
   type ClientErrorDisplay,
 } from "@/lib/client-api-errors";
+import { isPaymentsEnabled } from "@/lib/payments-config";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { PaymentsComingSoonModal } from "@/components/payments/payments-coming-soon-modal";
 import { OrderPaymentError } from "./order-payment-error";
 
 type OrderPayNowButtonProps = {
@@ -28,10 +30,17 @@ export function OrderPayNowButton({
 }: OrderPayNowButtonProps) {
   const router = useRouter();
   const [isPaying, setIsPaying] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const [errorDisplay, setErrorDisplay] = useState<ClientErrorDisplay | null>(null);
 
   const openCheckout = async () => {
     if (isPaying) return;
+
+    if (!isPaymentsEnabled()) {
+      setShowComingSoon(true);
+      return;
+    }
+
     setErrorDisplay(null);
     setIsPaying(true);
 
@@ -76,6 +85,12 @@ export function OrderPayNowButton({
         {isPaying ? "Opening checkout…" : "Pay now"}
       </button>
       {errorDisplay ? <OrderPaymentError display={errorDisplay} /> : null}
+      <PaymentsComingSoonModal
+        open={showComingSoon}
+        onClose={() => setShowComingSoon(false)}
+        orderId={orderId}
+        orderNumber={orderNumber}
+      />
     </div>
   );
 }

@@ -53,6 +53,10 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     if (!product.id) return;
+    if (product.isPurchasable === false) {
+      showToast(product.unavailabilityReason ?? "Product is currently unavailable.", "error");
+      return;
+    }
     setIsAdding(true);
     const result = await addToCart(product.id, 1);
     if (result.requiresAuth) {
@@ -142,12 +146,12 @@ export function HomeProductCard({ product, index = 0 }: HomeProductCardProps) {
             </button>
             <button
               type="button"
-              disabled={isAdding || !product.id}
+              disabled={isAdding || !product.id || product.isPurchasable === false}
               onClick={(e) => void handleAddToCart(e)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-semibold text-white transition hover:bg-primary-hover disabled:opacity-60"
             >
               <ShoppingCart className="h-4 w-4" />
-              {isAdding ? "Adding…" : "Add to Cart"}
+              {isAdding ? "Adding…" : product.isPurchasable === false ? "Unavailable" : "Add to Cart"}
             </button>
           </div>
         </div>

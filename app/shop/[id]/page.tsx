@@ -40,7 +40,17 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const relatedProducts = relatedList.products
     .filter((item) => item.id !== id)
     .slice(0, 3)
-    .map((item) => mapRelatedRecord(item as Parameters<typeof mapRelatedRecord>[0]));
+    .map((item) =>
+      mapRelatedRecord({
+        id: item.id,
+        title: item.title,
+        category: item.category,
+        price: Number(item.price),
+        discountPercentage: Number(item.discountPercentage),
+        images: item.images,
+        thumbnail: item.thumbnail,
+      })
+    );
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">

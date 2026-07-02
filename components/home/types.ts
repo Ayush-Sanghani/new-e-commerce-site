@@ -18,4 +18,6 @@ export type HomeProduct = {
   imageUrl: string;
   rating?: number;
   discountPercent?: number;
+  isPurchasable?: boolean;
+  unavailabilityReason?: string | null;
 };

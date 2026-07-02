@@ -60,8 +60,8 @@ export async function createProduct(body: CreateProductBody) {
           returnPolicy: body.returnPolicy ?? null,
           minimumOrderQuantity: 1,
           thumbnail,
-          keyFeatures: body.keyFeatures ?? null,
-          keyBenefits: body.keyBenefits ?? null,
+          keyFeatures: body.keyFeatures ?? Prisma.JsonNull,
+          keyBenefits: body.keyBenefits ?? Prisma.JsonNull,
           directionsForUse: body.directionsForUse ?? null,
           safetyInformation: body.safetyInformation ?? null,
           usesIndications: body.usesIndications ?? null,
@@ -150,8 +150,12 @@ export async function updateProduct(id: string, body: UpdateProductBody) {
   if (body.availabilityStatus !== undefined) data.availabilityStatus = body.availabilityStatus;
   if (body.returnPolicy !== undefined) data.returnPolicy = body.returnPolicy;
   if (body.thumbnail !== undefined) data.thumbnail = emptyToNull(body.thumbnail) ?? null;
-  if (body.keyFeatures !== undefined) data.keyFeatures = body.keyFeatures === null ? null : body.keyFeatures;
-  if (body.keyBenefits !== undefined) data.keyBenefits = body.keyBenefits === null ? null : body.keyBenefits;
+  if (body.keyFeatures !== undefined) {
+    data.keyFeatures = body.keyFeatures === null ? Prisma.JsonNull : body.keyFeatures;
+  }
+  if (body.keyBenefits !== undefined) {
+    data.keyBenefits = body.keyBenefits === null ? Prisma.JsonNull : body.keyBenefits;
+  }
   if (body.directionsForUse !== undefined) data.directionsForUse = body.directionsForUse;
   if (body.safetyInformation !== undefined) data.safetyInformation = body.safetyInformation;
   if (body.usesIndications !== undefined) data.usesIndications = body.usesIndications;

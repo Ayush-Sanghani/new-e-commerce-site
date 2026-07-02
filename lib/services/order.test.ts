@@ -18,11 +18,17 @@ vi.mock("@/lib/razorpay", () => ({
   getRazorpayKeyId: () => "rzp_test_key",
 }));
 
+vi.mock("@/lib/payments-config", () => ({
+  isPaymentsEnabled: vi.fn(() => true),
+}));
+
 import {
   createOrderFromCart,
   finalizePaidOrder,
   PENDING_ORDER_MAX_AGE_MS,
 } from "@/lib/services/order";
+import { isPaymentsEnabled } from "@/lib/payments-config";
+import { getRazorpay } from "@/lib/razorpay";
 
 describe("finalizePaidOrder", () => {
   const orderId = "order-1";
@@ -116,6 +122,7 @@ describe("finalizePaidOrder", () => {
 describe("createOrderFromCart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isPaymentsEnabled).mockReturnValue(true);
   });
 
   it("returns pending_order_exists when a recent pending_payment order exists", async () => {
@@ -175,5 +182,51 @@ describe("createOrderFromCart", () => {
     const ageMs = Date.now() - cutoffArg.getTime();
     expect(ageMs).toBeGreaterThanOrEqual(PENDING_ORDER_MAX_AGE_MS - 1000);
     expect(ageMs).toBeLessThanOrEqual(PENDING_ORDER_MAX_AGE_MS + 1000);
+  });
+
+  it("creates order without Razorpay when payments are disabled", async () => {
+    vi.mocked(isPaymentsEnabled).mockReturnValue(false);
+
+    const userId = "user-3";
+    const unitPrice = new Prisma.Decimal(100);
+
+    prismaMock.cart.findUnique.mockResolvedValue({
+      id: "cart-3",
+      items: [
+        {
+          quantity: 1,
+          product: {
+            id: "prod-10",
+            title: "Widget",
+            thumbnail: null,
+            price: unitPrice,
+            discountPercentage: new Prisma.Decimal(0),
+            sku: "W-2",
+            stock: 5,
+          },
+        },
+      ],
+    });
+
+    prismaMock.order.findFirst.mockResolvedValue(null);
+    prismaMock.$transaction.mockImplementation(async (callback) =>
+      callback({
+        order: {
+          create: vi.fn().mockResolvedValue({ id: "order-disabled-1" }),
+        },
+      })
+    );
+
+    const result = await createOrderFromCart({ userId });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        orderId: "order-disabled-1",
+        currency: "INR",
+        paymentsEnabled: false,
+      },
+    });
+    expect(getRazorpay).not.toHaveBeenCalled();
   });
 });

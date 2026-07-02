@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { attachAuthCookie } from "@/lib/auth-cookie";
-import { getPasswordLoginBlockMessage } from "@/lib/auth-password";
+import { getPasswordLoginBlockMessage, validatePassword } from "@/lib/auth-password";
+import { isValidEmail } from "@/lib/auth-email";
 import { prisma } from "@/lib/db";
 import { enforceAuthRateLimit } from "@/lib/rate-limit";
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
 
 function validateBody(body: unknown): { email: string; password: string } | { error: string } {
   if (typeof body !== "object" || body === null) {
@@ -21,13 +18,14 @@ function validateBody(body: unknown): { email: string; password: string } | { er
   if (!isValidEmail(email)) {
     return { error: "Invalid email format." };
   }
-  if (typeof password !== "string" || !password) {
-    return { error: "Password is required." };
+  const passwordResult = validatePassword(typeof password === "string" ? password : "");
+  if (!passwordResult.ok) {
+    return { error: passwordResult.error };
   }
 
   return {
     email: email.trim().toLowerCase(),
-    password,
+    password: password as string,
   };
 }
 

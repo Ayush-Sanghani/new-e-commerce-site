@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
-import { buildShopUrl } from "@/lib/shop/shop-url";
 import type { CategoryGroup } from "./types";
 import { AccountDropdown } from "./account-dropdown";
 import { MobileMenu } from "./mobile-menu";
@@ -37,7 +36,7 @@ export function HomeHeader({
           <div className="flex h-[72px] items-center gap-3 lg:gap-6">
             <Link href="/home" className="flex shrink-0 items-center gap-2.5 transition hover:opacity-90">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-white shadow-md">
-                DM
+                VP
               </div>
               <span className="hidden text-xl font-bold tracking-tight text-slate-900 sm:block">
                 VrajPharma

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { Role } from "@prisma/client";
 import { AUTH_COOKIE_NAME } from "@/lib/auth-constants";
 import { prisma } from "@/lib/db";
@@ -13,11 +14,7 @@ export type SessionUser = {
   role: Role;
 };
 
-/**
- * Returns the current user from JWT cookie + DB, or null if missing/invalid.
- */
-export async function getSessionUser(request: NextRequest): Promise<SessionUser | null> {
-  const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+async function resolveSessionUser(token: string | undefined): Promise<SessionUser | null> {
   if (!token) return null;
 
   try {
@@ -30,6 +27,23 @@ export async function getSessionUser(request: NextRequest): Promise<SessionUser 
   } catch {
     return null;
   }
+}
+
+/**
+ * Returns the current user from JWT cookie + DB, or null if missing/invalid.
+ * For API route handlers (NextRequest).
+ */
+export async function getSessionUser(request: NextRequest): Promise<SessionUser | null> {
+  return resolveSessionUser(request.cookies.get(AUTH_COOKIE_NAME)?.value);
+}
+
+/**
+ * Returns the current user from the cookie store + DB, or null if missing/invalid.
+ * For Server Components / pages (next/headers cookies()).
+ */
+export async function getSessionUserFromCookies(): Promise<SessionUser | null> {
+  const cookieStore = await cookies();
+  return resolveSessionUser(cookieStore.get(AUTH_COOKIE_NAME)?.value);
 }
 
 /**

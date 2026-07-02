@@ -1,14 +1,13 @@
-import { categoryGroups } from "@/components/home/data";
 import { ShopListingPage } from "@/components/shop/shop-listing-page";
-import { listProducts } from "@/lib/services/product-queries";
+import { toShopCategoryChips } from "@/lib/shop/categories";
 import {
   defaultProductListQuery,
   mapListItemToShopProduct,
   normalizeShopSearchParams,
   resolveCategorySlug,
   shopStateToApiSearchParams,
-  type ShopCategoryChip,
 } from "@/lib/shop/listing-params";
+import { listCategories, listProducts } from "@/lib/services/product-queries";
 import { parseProductListQuery } from "@/lib/validations/product-query";
 
 type ShopPageProps = {
@@ -40,13 +39,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     inStock: firstString(params.inStock),
   });
 
-  const categoryLookup: ShopCategoryChip[] = categoryGroups.flatMap((group) =>
-    group.items.map((item) => ({
-      id: item.slug,
-      slug: item.slug,
-      name: item.label,
-    }))
-  );
+  const catalogCategories = await listCategories();
+  const categoryLookup = toShopCategoryChips(catalogCategories);
   const categorySlug = resolveCategorySlug(normalized.categoryParam, categoryLookup);
   const apiSearchParams = shopStateToApiSearchParams({
     q: normalized.search,
@@ -70,9 +64,19 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   try {
     const data = await listProducts(query);
     products = data.products.map((row) =>
-      mapListItemToShopProduct(
-        row as Parameters<typeof mapListItemToShopProduct>[0]
-      )
+      mapListItemToShopProduct({
+        id: row.id,
+        title: row.title,
+        price: Number(row.price),
+        discountPercentage: Number(row.discountPercentage),
+        rating: row.rating,
+        thumbnail: row.thumbnail,
+        stock: row.stock,
+        minimumOrderQuantity: row.minimumOrderQuantity,
+        availabilityStatus: row.availabilityStatus,
+        category: row.category,
+        images: row.images,
+      })
     );
     categories = Array.from(
       new Set(

@@ -5,6 +5,7 @@ import {
   getGoogleOAuthConfig,
   getGoogleRedirectUri,
   isValidOAuthState,
+  toGoogleProfile,
 } from "@/lib/google-auth";
 
 const ENV_KEYS = [
@@ -75,5 +76,12 @@ describe("google-auth", () => {
     expect(isValidOAuthState("abc", "xyz")).toBe(false);
     expect(isValidOAuthState(null, "abc")).toBe(false);
     expect(isValidOAuthState("abc", undefined)).toBe(false);
+  });
+
+  it("treats missing Google verified_email as unverified", () => {
+    expect(toGoogleProfile({ id: "1", email: "a@example.com" }).email_verified).toBe(false);
+    expect(
+      toGoogleProfile({ id: "1", email: "a@example.com", verified_email: true }).email_verified
+    ).toBe(true);
   });
 });

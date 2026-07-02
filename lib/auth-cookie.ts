@@ -35,3 +35,11 @@ export async function attachAuthCookie(
   response.cookies.set(AUTH_COOKIE_NAME, token, cookieOptions);
   return response;
 }
+
+export function clearAuthCookie(response: NextResponse): NextResponse {
+  response.cookies.set(AUTH_COOKIE_NAME, "", {
+    ...getAuthCookieOptions(),
+    maxAge: 0,
+  });
+  return response;
+}

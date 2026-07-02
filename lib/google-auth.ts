@@ -119,6 +119,6 @@ export function toGoogleProfile(info: GoogleUserInfoResponse) {
     sub: info.id,
     email: info.email,
     name: info.name,
-    email_verified: info.verified_email ?? true,
+    email_verified: info.verified_email === true,
   };
 }

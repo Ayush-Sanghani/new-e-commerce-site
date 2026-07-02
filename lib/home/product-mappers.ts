@@ -1,5 +1,9 @@
 import type { HomeProduct } from "@/components/home/types";
 import { resolveProductImageUrl } from "@/lib/product-image";
+import {
+  getUnavailabilityReason,
+  isProductPurchasable,
+} from "@/lib/product-availability";
 import type { ProductListItem } from "@/lib/services/product-queries";
 import { formatInr, resolveCatalogPrices } from "@/lib/pricing";
 
@@ -21,6 +25,11 @@ export function mapToHomeProduct(row: ProductListItem, tagOverride?: string): Ho
         ? "Top Rated"
         : "Featured");
 
+  const productAvailability = {
+    stock: row.stock,
+    availabilityStatus: row.availabilityStatus,
+  };
+
   return {
     id: row.id,
     title: row.title,
@@ -31,6 +40,8 @@ export function mapToHomeProduct(row: ProductListItem, tagOverride?: string): Ho
     imageUrl: resolveProductImageUrl(row.thumbnail, row.images),
     rating,
     discountPercent: discountPercentage > 0 ? Math.round(discountPercentage) : undefined,
+    isPurchasable: isProductPurchasable(productAvailability),
+    unavailabilityReason: getUnavailabilityReason(productAvailability),
   };
 }
 

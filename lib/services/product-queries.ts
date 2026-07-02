@@ -9,6 +9,9 @@ const productListSelect = {
   price: true,
   discountPercentage: true,
   thumbnail: true,
+  stock: true,
+  minimumOrderQuantity: true,
+  availabilityStatus: true,
   createdAt: true,
   category: { select: { name: true } },
   images: {
@@ -237,4 +240,11 @@ export async function getProductById(id: string) {
   });
   if (!product) return null;
   return serializeProduct(product as unknown as Record<string, unknown>);
+}
+
+export async function listCategories() {
+  return prisma.category.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true },
+  });
 }

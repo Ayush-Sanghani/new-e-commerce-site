@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { clearAuthCookie } from "@/lib/auth-cookie";
+import { validatePassword } from "@/lib/auth-password";
 import { prisma } from "@/lib/db";
 import { enforceAuthRateLimit } from "@/lib/rate-limit";
 import {
@@ -7,7 +9,6 @@ import {
   isPasswordResetTokenExpired,
 } from "@/lib/password-reset";
 
-const MIN_PASSWORD_LENGTH = 8;
 const SALT_ROUNDS = 10;
 
 function validateBody(
@@ -21,16 +22,12 @@ function validateBody(
   if (typeof token !== "string" || !token.trim()) {
     return { error: "Reset token is required." };
   }
-  if (typeof password !== "string" || !password) {
-    return { error: "Password is required." };
-  }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return {
-      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-    };
+  const passwordResult = validatePassword(typeof password === "string" ? password : "");
+  if (!passwordResult.ok) {
+    return { error: passwordResult.error };
   }
 
-  return { token: token.trim(), password };
+  return { token: token.trim(), password: password as string };
 }
 
 export async function POST(request: NextRequest) {
@@ -82,10 +79,12 @@ export async function POST(request: NextRequest) {
       prisma.passwordResetToken.deleteMany({ where: { userId: resetRecord.userId } }),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: "Password updated successfully. You can sign in now.",
     });
+    clearAuthCookie(response);
+    return response;
   } catch (err) {
     console.error("Reset password error:", err);
     return NextResponse.json(

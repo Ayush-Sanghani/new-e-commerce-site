@@ -11,9 +11,13 @@ export type AuthRateLimitKind =
   | "verify-email"
   | "resend-verification";
 
-/** Per-IP limits for auth endpoints (Vercel-safe via Upstash Redis). */
+export type ApiRateLimitKind = "cart-mutation" | "profile-update";
+
+export type RateLimitKind = AuthRateLimitKind | ApiRateLimitKind;
+
+/** Per-IP limits for rate-limited endpoints (Vercel-safe via Upstash Redis). */
 const LIMITS: Record<
-  AuthRateLimitKind,
+  RateLimitKind,
   { requests: number; window: `${number} s` | `${number} m` | `${number} h` | `${number} d` }
 > = {
   login: { requests: 5, window: "15 m" },
@@ -22,10 +26,12 @@ const LIMITS: Record<
   "reset-password": { requests: 5, window: "15 m" },
   "verify-email": { requests: 5, window: "15 m" },
   "resend-verification": { requests: 5, window: "1 h" },
+  "cart-mutation": { requests: 60, window: "1 m" },
+  "profile-update": { requests: 20, window: "10 m" },
 };
 
 let redisClient: Redis | null = null;
-const limiterCache = new Map<AuthRateLimitKind, Ratelimit>();
+const limiterCache = new Map<RateLimitKind, Ratelimit>();
 
 export function isRateLimitConfigured(): boolean {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
@@ -39,7 +45,7 @@ function getRedis(): Redis | null {
   return redisClient;
 }
 
-function getLimiter(kind: AuthRateLimitKind): Ratelimit | null {
+function getLimiter(kind: RateLimitKind): Ratelimit | null {
   const redis = getRedis();
   if (!redis) return null;
 
@@ -71,17 +77,19 @@ export function getClientIp(request: NextRequest): string {
 
 export type RateLimitCheckResult =
   | { allowed: true }
-  | { allowed: false; retryAfterSeconds: number };
+  | { allowed: false; retryAfterSeconds: number; reason?: "rate_limited" | "not_configured" };
 
-export async function checkAuthRateLimit(
+export async function checkRateLimit(
   request: NextRequest,
-  kind: AuthRateLimitKind
+  kind: RateLimitKind
 ): Promise<RateLimitCheckResult> {
   const limiter = getLimiter(kind);
   if (!limiter) {
     if (process.env.NODE_ENV === "production") {
-      console.warn(`Rate limit skipped: Upstash env missing for ${kind}`);
+      console.error(`Rate limit blocked: Upstash env missing for ${kind}`);
+      return { allowed: false, retryAfterSeconds: 60, reason: "not_configured" };
     }
+    console.warn(`Rate limit skipped in development: Upstash env missing for ${kind}`);
     return { allowed: true };
   }
 
@@ -96,18 +104,27 @@ export async function checkAuthRateLimit(
     1,
     Math.ceil((reset - Date.now()) / 1000)
   );
-  return { allowed: false, retryAfterSeconds };
+  return { allowed: false, retryAfterSeconds, reason: "rate_limited" };
 }
 
-export function rateLimitResponse(retryAfterSeconds: number): NextResponse {
+/** @deprecated Use checkRateLimit. */
+export const checkAuthRateLimit = checkRateLimit;
+
+export function rateLimitResponse(
+  retryAfterSeconds: number,
+  reason: "rate_limited" | "not_configured" = "rate_limited"
+): NextResponse {
+  const isMisconfigured = reason === "not_configured";
   return NextResponse.json(
     {
       success: false,
-      error: "Too many requests. Please try again later.",
+      error: isMisconfigured
+        ? "Authentication is temporarily unavailable. Please try again later."
+        : "Too many requests. Please try again later.",
       retryAfterSeconds,
     },
     {
-      status: 429,
+      status: isMisconfigured ? 503 : 429,
       headers: {
         "Retry-After": String(retryAfterSeconds),
       },
@@ -116,11 +133,41 @@ export function rateLimitResponse(retryAfterSeconds: number): NextResponse {
 }
 
 /** Returns a 429 response when limited, or null to continue the handler. */
-export async function enforceAuthRateLimit(
+export async function enforceRateLimit(
   request: NextRequest,
-  kind: AuthRateLimitKind
+  kind: RateLimitKind
 ): Promise<NextResponse | null> {
-  const result = await checkAuthRateLimit(request, kind);
+  const result = await checkRateLimit(request, kind);
   if (result.allowed) return null;
-  return rateLimitResponse(result.retryAfterSeconds);
+  return rateLimitResponse(result.retryAfterSeconds, result.reason);
+}
+
+/** @deprecated Use enforceRateLimit. */
+export const enforceAuthRateLimit = enforceRateLimit;
+
+/**
+ * Rate limit guard for `{ success, message, data }`-shaped API routes (cart, profile).
+ * Returns a 429/503 response when limited, or null to continue.
+ */
+export async function enforceApiRateLimit(
+  request: NextRequest,
+  kind: RateLimitKind
+): Promise<NextResponse | null> {
+  const result = await checkRateLimit(request, kind);
+  if (result.allowed) return null;
+
+  const isMisconfigured = result.reason === "not_configured";
+  return NextResponse.json(
+    {
+      success: false,
+      message: isMisconfigured
+        ? "Service is temporarily unavailable. Please try again later."
+        : "Too many requests. Please slow down and try again.",
+      data: { retryAfterSeconds: result.retryAfterSeconds },
+    },
+    {
+      status: isMisconfigured ? 503 : 429,
+      headers: { "Retry-After": String(result.retryAfterSeconds) },
+    }
+  );
 }

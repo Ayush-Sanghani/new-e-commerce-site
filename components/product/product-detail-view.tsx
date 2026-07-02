@@ -44,22 +44,22 @@ function isNegativeInfo(text: string) {
 }
 
 export function ProductDetailView({ product, relatedProducts }: ProductDetailViewProps) {
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(product.minimumOrderQuantity);
   const [isAdding, setIsAdding] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
 
   const increaseQuantity = () => {
-    setQuantity((prev) => Math.min(prev + 1, Math.max(product.stock, 1)));
+    setQuantity((prev) => Math.min(prev + 1, Math.max(product.stock, product.minimumOrderQuantity)));
   };
 
   const decreaseQuantity = () => {
-    setQuantity((prev) => Math.max(prev - 1, 1));
+    setQuantity((prev) => Math.max(prev - 1, product.minimumOrderQuantity));
   };
 
   const handleAddToCart = async () => {
-    if (product.stock <= 0) {
-      showToast("Product is currently out of stock.", "error");
+    if (!product.isPurchasable) {
+      showToast(product.unavailabilityReason ?? "Product is currently unavailable.", "error");
       return;
     }
 
@@ -209,7 +209,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
               <button
                 type="button"
                 onClick={decreaseQuantity}
-                disabled={quantity <= 1 || isAdding}
+                disabled={quantity <= product.minimumOrderQuantity || isAdding || !product.isPurchasable}
                 className="h-8 w-8 rounded-md border border-neutral-300 bg-white text-slate-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Decrease quantity"
               >
@@ -219,7 +219,11 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
               <button
                 type="button"
                 onClick={increaseQuantity}
-                disabled={isAdding || product.stock <= 0 || quantity >= Math.max(product.stock, 1)}
+                disabled={
+                  isAdding ||
+                  !product.isPurchasable ||
+                  quantity >= Math.max(product.stock, product.minimumOrderQuantity)
+                }
                 className="h-8 w-8 rounded-md border border-neutral-300 bg-white text-slate-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Increase quantity"
               >
@@ -227,14 +231,26 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
               </button>
             </div>
 
+            {product.minimumOrderQuantity > 1 ? (
+              <p className="text-xs text-slate-500">
+                Minimum order quantity: {product.minimumOrderQuantity}
+              </p>
+            ) : null}
+
+            {!product.isPurchasable ? (
+              <p className="text-sm font-medium text-orange-600">
+                {product.unavailabilityReason ?? "Currently unavailable"}
+              </p>
+            ) : null}
+
             <div className="flex flex-col gap-3 sm:flex-row">
               <HomeButton
                 variant="dark"
                 className="w-full py-2.5 text-sm font-bold tracking-wide shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isAdding || product.stock <= 0}
+                disabled={isAdding || !product.isPurchasable}
                 onClick={handleAddToCart}
               >
-                {isAdding ? "Adding..." : "Add to Cart"}
+                {isAdding ? "Adding..." : product.isPurchasable ? "Add to Cart" : "Unavailable"}
               </HomeButton>
               <Link
                 href="/cart"
