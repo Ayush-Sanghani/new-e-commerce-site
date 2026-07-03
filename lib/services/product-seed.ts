@@ -195,9 +195,6 @@ export async function seedPharmaCatalog(): Promise<{
   };
 }
 
-/** @deprecated Use seedPharmaCatalog — kept for backwards compatibility. */
-export const seedProductsFromDummyJson = seedPharmaCatalog;
-
 async function upsertOneProduct(p: PharmaSeedProduct): Promise<"created" | "updated"> {
   const slug = categoryToSlug(p.category);
 
