@@ -1,0 +1,38 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - n8n-vxyu_default
+      - internal
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=n8n-vxyu_default
+      - traefik.http.routers.vrajpharma.rule=Host(`vrajpharma.srv1752630.hstgr.cloud`)
+      - traefik.http.routers.vrajpharma.entrypoints=websecure
+      - traefik.http.routers.vrajpharma.tls.certresolver=letsencrypt
+      - traefik.http.services.vrajpharma.loadbalancer.server.port=3000
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  n8n-vxyu_default:
+    external: true
+  internal:
+    driver: bridge
