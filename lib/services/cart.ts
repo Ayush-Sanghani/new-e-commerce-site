@@ -7,6 +7,9 @@ import {
   effectiveUnitPriceInr,
   PRODUCT_CURRENCY,
 } from "@/lib/pricing";
+import { CART_RATE_DISCLAIMER } from "@/lib/currency-config";
+import type { CurrencyContext } from "@/lib/services/currency";
+import { convertInrToCurrency } from "@/lib/money";
 import { validateProductQuantity } from "@/lib/product-availability";
 
 const productForValidation = {
@@ -55,7 +58,29 @@ export type CartSummaryPayload = {
   shipping: number;
   discount: number;
   total: number;
+  /** INR totals — internal source of truth. */
   currency: typeof PRODUCT_CURRENCY;
+};
+
+export type CartDisplaySummaryPayload = {
+  currency: string;
+  symbol: string;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  rateToInr: number;
+  rateUpdatedAt: string;
+  rateStale: boolean;
+  disclaimer: string;
+};
+
+export type CartLineDisplayPayload = {
+  unitPrice: number;
+  listPrice: number;
+  lineTotal: number;
+  listLineTotal: number;
 };
 
 export type CartLinePayload = {
@@ -72,6 +97,8 @@ export type CartLinePayload = {
   lineTotal: number;
   /** listPrice × quantity (for strikethrough display). */
   listLineTotal: number;
+  /** Live-rate display amounts in the resolved charge currency. */
+  display: CartLineDisplayPayload;
   maxQuantity: number;
   product: {
     id: string;
@@ -84,7 +111,10 @@ export type CartLinePayload = {
 export type CartPayload = {
   id: string;
   items: CartLinePayload[];
+  /** INR summary — server source of truth for checkout computation. */
   summary: CartSummaryPayload;
+  /** Live-rate display summary for the customer's selected currency. */
+  display: CartDisplaySummaryPayload;
 };
 
 function decimalToNumber(value: Prisma.Decimal): number {
@@ -99,6 +129,55 @@ function serializeSummary(totals: ReturnType<typeof computeOrderTotalsFromLines>
     discount: decimalToNumber(totals.discount),
     total: decimalToNumber(totals.total),
     currency: totals.currency,
+  };
+}
+
+function convertInrAmountForDisplay(inrAmount: number, context: CurrencyContext): number {
+  return decimalToNumber(
+    convertInrToCurrency(inrAmount, context.rateToInr, context.decimalDigits)
+  );
+}
+
+function buildLineDisplay(line: Omit<CartLinePayload, "display">, context: CurrencyContext): CartLineDisplayPayload {
+  return {
+    unitPrice: convertInrAmountForDisplay(line.unitPrice, context),
+    listPrice: convertInrAmountForDisplay(line.listPrice, context),
+    lineTotal: convertInrAmountForDisplay(line.lineTotal, context),
+    listLineTotal: convertInrAmountForDisplay(line.listLineTotal, context),
+  };
+}
+
+function buildDisplaySummary(summary: CartSummaryPayload, context: CurrencyContext): CartDisplaySummaryPayload {
+  return {
+    currency: context.code,
+    symbol: context.symbol,
+    subtotal: convertInrAmountForDisplay(summary.subtotal, context),
+    tax: convertInrAmountForDisplay(summary.tax, context),
+    shipping: convertInrAmountForDisplay(summary.shipping, context),
+    discount: convertInrAmountForDisplay(summary.discount, context),
+    total: convertInrAmountForDisplay(summary.total, context),
+    rateToInr: context.rateToInr.toNumber(),
+    rateUpdatedAt: context.rateUpdatedAt.toISOString(),
+    rateStale: context.rateStale,
+    disclaimer: CART_RATE_DISCLAIMER,
+  };
+}
+
+export function applyDisplayCurrencyToCartPayload(
+  payload: CartPayload | null,
+  context: CurrencyContext
+): CartPayload | null {
+  if (!payload) {
+    return null;
+  }
+
+  return {
+    ...payload,
+    items: payload.items.map((line) => ({
+      ...line,
+      display: buildLineDisplay(line, context),
+    })),
+    display: buildDisplaySummary(payload.summary, context),
   };
 }
 
@@ -125,12 +204,15 @@ async function loadCartWithItems(
 /**
  * Server source of truth for cart line prices and checkout summary (INR).
  */
-export function buildCartPayload(cart: CartWithItems | null): CartPayload | null {
+export function buildCartPayload(
+  cart: CartWithItems | null,
+  context?: CurrencyContext
+): CartPayload | null {
   if (!cart) {
     return null;
   }
 
-  const lines: CartLinePayload[] = [];
+  const lines: Omit<CartLinePayload, "display">[] = [];
   const totalLines: { lineTotal: Prisma.Decimal }[] = [];
 
   for (const item of cart.items) {
@@ -170,11 +252,28 @@ export function buildCartPayload(cart: CartWithItems | null): CartPayload | null
     totalLines.push({ lineTotal });
   }
 
-  return {
+  const summary = serializeSummary(computeOrderTotalsFromLines(totalLines));
+  const displayContext: CurrencyContext =
+    context ?? {
+      code: PRODUCT_CURRENCY,
+      symbol: "₹",
+      decimalDigits: 2,
+      rateToInr: new Prisma.Decimal(1),
+      rateUpdatedAt: new Date(),
+      rateStale: false,
+    };
+
+  const payload: CartPayload = {
     id: cart.id,
-    items: lines,
-    summary: serializeSummary(computeOrderTotalsFromLines(totalLines)),
+    items: lines.map((line) => ({
+      ...line,
+      display: buildLineDisplay(line, displayContext),
+    })),
+    summary,
+    display: buildDisplaySummary(summary, displayContext),
   };
+
+  return payload;
 }
 
 /** Logged-in only. Returns null if the user has no cart yet. */

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { Lock, Truck, RotateCcw, Tag } from "lucide-react";
 import { Card } from "@/components/home/ui/card";
-import { formatInr } from "@/lib/pricing";
+import { formatMoney } from "@/lib/money";
 import type { CartSummary } from "./types";
 
 type CartSummaryCardProps = {
   summary: CartSummary;
+  disclaimer?: string;
+  rateStale?: boolean;
   disabledCheckout?: boolean;
   onCheckout?: () => void;
   checkoutLabel?: string;
@@ -22,10 +24,18 @@ const TRUST_BADGES = [
 
 export function CartSummaryCard({
   summary,
+  disclaimer,
+  rateStale,
   disabledCheckout,
   onCheckout,
   checkoutLabel = "Proceed to Checkout",
 }: CartSummaryCardProps) {
+  const formatAmount = (amount: number) =>
+    formatMoney(amount, {
+      currencyCode: summary.currency,
+      symbol: summary.symbol,
+    });
+
   return (
     <Card as="section" className="space-y-4 p-5 sm:p-6 lg:sticky lg:top-20">
       <h2 className="text-lg font-bold text-slate-900">Order Summary</h2>
@@ -33,30 +43,35 @@ export function CartSummaryCard({
       <div className="space-y-2 text-sm">
         <div className="flex items-center justify-between text-slate-600">
           <span>Subtotal</span>
-          <span>{formatInr(summary.subtotal)}</span>
+          <span>{formatAmount(summary.subtotal)}</span>
         </div>
         <div className="flex items-center justify-between text-slate-600">
           <span>Shipping</span>
-          <span>{summary.shipping === 0 ? "Free" : formatInr(summary.shipping)}</span>
+          <span>{summary.shipping === 0 ? "Free" : formatAmount(summary.shipping)}</span>
         </div>
         {summary.discount > 0 ? (
           <div className="flex items-center justify-between text-slate-600">
             <span>Discount</span>
-            <span>-{formatInr(summary.discount)}</span>
+            <span>-{formatAmount(summary.discount)}</span>
           </div>
         ) : null}
         <div className="flex items-center justify-between text-slate-600">
           <span>Tax (GST)</span>
-          <span>{formatInr(summary.tax)}</span>
+          <span>{formatAmount(summary.tax)}</span>
         </div>
       </div>
 
       <div className="border-t border-neutral-200 pt-3">
         <div className="flex items-center justify-between text-base font-bold text-slate-900">
           <span>Total</span>
-          <span>{formatInr(summary.total)}</span>
+          <span>{formatAmount(summary.total)}</span>
         </div>
         <p className="mt-1 text-xs text-slate-500">Payable at checkout · {summary.currency}</p>
+        {disclaimer ? (
+          <p className={`mt-2 text-xs leading-5 ${rateStale ? "text-amber-700" : "text-slate-500"}`}>
+            {disclaimer}
+          </p>
+        ) : null}
       </div>
 
       <button

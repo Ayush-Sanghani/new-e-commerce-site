@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatInr } from "@/lib/pricing";
+import { formatMoney } from "@/lib/money";
 import { formatCategoryDisplayName } from "@/lib/shop/listing-params";
 import { ProductCard } from "./product-card";
 import {
@@ -25,6 +25,8 @@ type ShopListingPageProps = {
   minPrice?: number;
   maxPrice?: number;
   inStock?: boolean;
+  currencyCode?: string;
+  currencySymbol?: string;
 };
 
 type ShopHrefParams = {
@@ -67,14 +69,21 @@ function activeFilterLabels(params: {
   minPrice?: number;
   maxPrice?: number;
   inStock?: boolean;
+  currencyCode: string;
+  currencySymbol: string;
 }): string[] {
+  const format = (amount: number) =>
+    formatMoney(amount, {
+      currencyCode: params.currencyCode,
+      symbol: params.currencySymbol,
+    });
   const labels: string[] = [];
   if (params.minPrice !== undefined && params.maxPrice !== undefined) {
-    labels.push(`${formatInr(params.minPrice)}–${formatInr(params.maxPrice)}`);
+    labels.push(`${format(params.minPrice)}–${format(params.maxPrice)}`);
   } else if (params.minPrice !== undefined) {
-    labels.push(`from ${formatInr(params.minPrice)}`);
+    labels.push(`from ${format(params.minPrice)}`);
   } else if (params.maxPrice !== undefined) {
-    labels.push(`up to ${formatInr(params.maxPrice)}`);
+    labels.push(`up to ${format(params.maxPrice)}`);
   }
   if (params.inStock) labels.push("In stock only");
   return labels;
@@ -146,6 +155,8 @@ export function ShopListingPage({
   minPrice,
   maxPrice,
   inStock,
+  currencyCode = "INR",
+  currencySymbol = "₹",
 }: ShopListingPageProps) {
   const activeCategoryValue = category ?? "All";
   const activeCategoryLabel =
@@ -156,7 +167,11 @@ export function ShopListingPage({
   const searchTrimmed = search?.trim() ?? "";
   const filterState = { minPrice, maxPrice, inStock };
   const showClearFilters = hasActivePriceOrStockFilters(filterState);
-  const filterLabels = activeFilterLabels(filterState);
+  const filterLabels = activeFilterLabels({
+    ...filterState,
+    currencyCode,
+    currencySymbol,
+  });
   const activeFilterCount =
     (minPrice !== undefined ? 1 : 0) +
     (maxPrice !== undefined ? 1 : 0) +
@@ -236,7 +251,7 @@ export function ShopListingPage({
                     htmlFor="minPrice"
                     className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
                   >
-                    Min price (₹)
+                    Min price ({currencySymbol})
                   </label>
                   <input
                     id="minPrice"
@@ -254,7 +269,7 @@ export function ShopListingPage({
                     htmlFor="maxPrice"
                     className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500"
                   >
-                    Max price (₹)
+                    Max price ({currencySymbol})
                   </label>
                   <input
                     id="maxPrice"
@@ -359,7 +374,12 @@ export function ShopListingPage({
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              currencyCode={currencyCode}
+              currencySymbol={currencySymbol}
+            />
           ))}
         </div>
 

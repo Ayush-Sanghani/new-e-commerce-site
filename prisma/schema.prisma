@@ -64,11 +64,44 @@ model UserProfile {
   state        String?
   postalCode   String?
   country      String?
+  /// ISO 4217 code (e.g. "USD"); null = resolve from country/locale/INR fallback
+  preferredCurrency String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// -----------------------------------------------
+// Multi-currency (catalog prices remain INR)
+// -----------------------------------------------
+
+model Currency {
+  id                  String   @id @default(cuid())
+  /// ISO 4217 code, e.g. "USD"
+  code                String   @unique
+  symbol              String
+  name                String
+  isActive            Boolean  @default(true)
+  decimalDigits       Int      @default(2)
+  /// True when Razorpay orders.create supports this charge currency on your account
+  isRazorpaySupported Boolean  @default(false)
+  sortOrder           Int      @default(0)
+  exchangeRate        ExchangeRate?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model ExchangeRate {
+  id         String   @id @default(cuid())
+  currencyId String   @unique
+  currency   Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+  /// How many INR equal 1 unit of this currency (INR = 1)
+  rateToInr  Decimal  @db.Decimal(15, 6)
+  updatedAt  DateTime @updatedAt
 }
 
 // -----------------------------------------------
@@ -253,6 +286,11 @@ model Order {
   discount Decimal @db.Decimal(10, 2) @default(0)
   total    Decimal @db.Decimal(10, 2)
 
+  /// FX snapshot at checkout: 1 charge-currency unit = X INR (1 for INR orders)
+  exchangeRate Decimal @db.Decimal(15, 6) @default(1)
+  /// INR equivalent for accounting; explicit anchor (equals total when currency is INR)
+  totalInInr   Decimal @db.Decimal(10, 2)
+
   /// Set when your server creates a Razorpay Order (Orders API)
   razorpayOrderId String? @unique
 
@@ -305,6 +343,11 @@ model Payment {
 
   amount   Decimal @db.Decimal(10, 2)
   currency String  @default("INR")
+
+  /// FX snapshot copied from order at payment time (1 for INR)
+  exchangeRate Decimal @db.Decimal(15, 6) @default(1)
+  /// INR equivalent for reconciliation with settlement
+  amountInInr  Decimal @db.Decimal(10, 2)
 
   status PaymentStatus @default(pending)
 

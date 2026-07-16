@@ -28,11 +28,12 @@ import { CartEmptyState } from "./cart-empty-state";
 import { CartErrorBanner } from "./cart-error-banner";
 import { CartItemRow } from "./cart-item-row";
 import { CartSummaryCard } from "./cart-summary-card";
-import type { CartItem, CartSummary } from "./types";
+import type { CartItem, CartSummary, CartDisplayMeta } from "./types";
 
 type CartPageViewProps = {
   initialItems: CartItem[];
   initialSummary: CartSummary;
+  initialDisplayMeta?: CartDisplayMeta | null;
 };
 
 type CartApiResponse = ApiJsonBody & {
@@ -42,11 +43,13 @@ type CartApiResponse = ApiJsonBody & {
 function applyCartResponse(
   cart: CartPayload | null | undefined,
   setItems: (items: CartItem[]) => void,
-  setSummary: (summary: CartSummary) => void
+  setSummary: (summary: CartSummary) => void,
+  setDisplayMeta: (meta: CartDisplayMeta | null) => void
 ) {
   const mapped = mapApiCartPayload(cart);
   setItems(mapped.items);
   setSummary(mapped.summary);
+  setDisplayMeta(mapped.displayMeta);
 }
 
 function cartItemLookups(items: CartItem[]) {
@@ -62,10 +65,15 @@ type MeApiResponse = {
   };
 };
 
-export function CartPageView({ initialItems, initialSummary }: CartPageViewProps) {
+export function CartPageView({
+  initialItems,
+  initialSummary,
+  initialDisplayMeta = null,
+}: CartPageViewProps) {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>(initialItems);
   const [summary, setSummary] = useState<CartSummary>(initialSummary);
+  const [displayMeta, setDisplayMeta] = useState<CartDisplayMeta | null>(initialDisplayMeta);
   const [isLoading, setIsLoading] = useState(false);
   const [busyProductIds, setBusyProductIds] = useState<string[]>([]);
   const [errorDisplay, setErrorDisplay] = useState<ClientErrorDisplay | null>(null);
@@ -95,7 +103,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         );
         return;
       }
-      applyCartResponse(data.data?.cart, setItems, setSummary);
+      applyCartResponse(data.data?.cart, setItems, setSummary, setDisplayMeta);
     } catch {
       setErrorDisplay(resolveNetworkError("Network error while refreshing cart."));
     } finally {
@@ -136,7 +144,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         setHighlightProductId(display.highlightProductId ?? productId);
         return;
       }
-      applyCartResponse(data.data?.cart, setItems, setSummary);
+      applyCartResponse(data.data?.cart, setItems, setSummary, setDisplayMeta);
       notifyCartUpdated();
     } catch {
       setErrorDisplay(resolveNetworkError("Network error while updating cart."));
@@ -158,7 +166,7 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
         setErrorDisplay(resolveCartItemPatchError(res.status, data, productId));
         return;
       }
-      applyCartResponse(data.data?.cart, setItems, setSummary);
+      applyCartResponse(data.data?.cart, setItems, setSummary, setDisplayMeta);
       notifyCartUpdated();
     } catch {
       setErrorDisplay(resolveNetworkError("Network error while removing cart item."));
@@ -258,7 +266,10 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
       const createRes = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shippingAddress }),
+        body: JSON.stringify({
+          shippingAddress,
+          currency: summary.currency,
+        }),
       });
 
       const createData = (await createRes.json()) as ApiJsonBody;
@@ -407,6 +418,8 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
               <CartItemRow
                 key={item.id}
                 item={item}
+                currencyCode={summary.currency}
+                currencySymbol={summary.symbol}
                 isBusy={busyProductIds.includes(item.productId)}
                 highlighted={highlightProductId === item.productId}
                 onDecrease={decreaseQuantity}
@@ -418,6 +431,8 @@ export function CartPageView({ initialItems, initialSummary }: CartPageViewProps
 
           <CartSummaryCard
             summary={summary}
+            disclaimer={displayMeta?.disclaimer}
+            rateStale={displayMeta?.rateStale}
             disabledCheckout={items.length === 0 || isCheckingOut}
             onCheckout={startCheckout}
             checkoutLabel={isCheckingOut ? "Starting checkout..." : "Proceed to Checkout"}

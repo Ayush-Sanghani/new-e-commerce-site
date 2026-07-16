@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { buildCartPayload, getCartForUser } from "@/lib/services/cart";
+import { resolveCartCurrencyFromRequest } from "@/lib/services/currency";
 
 /**
  * GET /api/cart — current cart (logged-in only). Does not create a cart.
+ * Optional ?currency=USD uses live exchange rate for display (locked at checkout).
  */
 export async function GET(request: NextRequest) {
   const user = await getSessionUser(request);
@@ -15,11 +17,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const { context } = await resolveCartCurrencyFromRequest(request, user.id);
     const cart = await getCartForUser(user.id);
     return NextResponse.json({
       success: true,
       message: "Cart fetched.",
-      data: { cart: buildCartPayload(cart) },
+      data: { cart: buildCartPayload(cart, context) },
     });
   } catch (err) {
     console.error("GET /api/cart:", err);

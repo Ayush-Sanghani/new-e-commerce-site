@@ -1,4 +1,8 @@
 import { ShopListingPage } from "@/components/shop/shop-listing-page";
+import {
+  convertDisplayPriceToInr,
+  convertInrPriceForDisplay,
+} from "@/lib/catalog-display";
 import { toShopCategoryChips } from "@/lib/shop/categories";
 import {
   defaultProductListQuery,
@@ -7,6 +11,7 @@ import {
   resolveCategorySlug,
   shopStateToApiSearchParams,
 } from "@/lib/shop/listing-params";
+import { getServerDisplayCurrency } from "@/lib/server-currency";
 import { listCategories, listProducts } from "@/lib/services/product-queries";
 import { parseProductListQuery } from "@/lib/validations/product-query";
 
@@ -29,6 +34,8 @@ function firstString(value: string | string[] | undefined): string | undefined {
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const params = await searchParams;
+  const { context } = await getServerDisplayCurrency();
+
   const normalized = normalizeShopSearchParams({
     search: firstString(params.search),
     category: firstString(params.category),
@@ -39,6 +46,16 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     inStock: firstString(params.inStock),
   });
 
+  // URL bounds are in display currency; convert to INR for DB filtering.
+  const minPriceInr =
+    normalized.minPrice !== undefined
+      ? convertDisplayPriceToInr(normalized.minPrice, context)
+      : undefined;
+  const maxPriceInr =
+    normalized.maxPrice !== undefined
+      ? convertDisplayPriceToInr(normalized.maxPrice, context)
+      : undefined;
+
   const catalogCategories = await listCategories();
   const categoryLookup = toShopCategoryChips(catalogCategories);
   const categorySlug = resolveCategorySlug(normalized.categoryParam, categoryLookup);
@@ -47,8 +64,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     categorySlug,
     sort: normalized.sort,
     page: normalized.page,
-    minPrice: normalized.minPrice,
-    maxPrice: normalized.maxPrice,
+    minPrice: minPriceInr,
+    maxPrice: maxPriceInr,
     inStock: normalized.inStock,
   });
   const parsed = parseProductListQuery(apiSearchParams);
@@ -63,8 +80,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
   try {
     const data = await listProducts(query);
-    products = data.products.map((row) =>
-      mapListItemToShopProduct({
+    products = data.products.map((row) => {
+      const product = mapListItemToShopProduct({
         id: row.id,
         title: row.title,
         price: Number(row.price),
@@ -76,8 +93,16 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         availabilityStatus: row.availabilityStatus,
         category: row.category,
         images: row.images,
-      })
-    );
+      });
+      return {
+        ...product,
+        price: convertInrPriceForDisplay(product.price, context),
+        oldPrice:
+          product.oldPrice != null
+            ? convertInrPriceForDisplay(product.oldPrice, context)
+            : undefined,
+      };
+    });
     categories = Array.from(
       new Set(
         data.products
@@ -118,6 +143,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         minPrice={normalized.minPrice}
         maxPrice={normalized.maxPrice}
         inStock={normalized.inStock}
+        currencyCode={context.code}
+        currencySymbol={context.symbol}
       />
     </div>
   );

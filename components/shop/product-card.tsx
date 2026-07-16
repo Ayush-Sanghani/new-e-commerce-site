@@ -4,23 +4,35 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ImageOff } from "lucide-react";
-import { addToCart } from "@/lib/cart-client";
-import { formatInr } from "@/lib/pricing";
-import { FALLBACK_IMAGE } from "@/lib/product-image";
-import { notifyCartUpdated } from "@/lib/cart-sync";
-import { formatCategoryDisplayName } from "@/lib/shop/listing-params";
+import { useCurrencyOptional } from "@/components/currency/currency-provider";
 import { useToast } from "@/components/ui/toast-provider";
+import { addToCart } from "@/lib/cart-client";
+import { notifyCartUpdated } from "@/lib/cart-sync";
+import { formatMoney } from "@/lib/money";
+import { FALLBACK_IMAGE } from "@/lib/product-image";
+import { formatCategoryDisplayName } from "@/lib/shop/listing-params";
 import type { ShopProduct } from "./types";
 
 type ProductCardProps = {
   product: ShopProduct;
+  currencyCode?: string;
+  currencySymbol?: string;
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({
+  product,
+  currencyCode,
+  currencySymbol,
+}: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { showToast } = useToast();
   const router = useRouter();
+  const currency = useCurrencyOptional();
+  const resolvedCode = currencyCode ?? currency?.code ?? "INR";
+  const resolvedSymbol = currencySymbol ?? currency?.symbol ?? "₹";
+  const formatAmount = (amount: number) =>
+    formatMoney(amount, { currencyCode: resolvedCode, symbol: resolvedSymbol });
   const displayImageUrl = imageError ? FALLBACK_IMAGE : product.imageUrl;
   const showRating = Number.isFinite(product.rating) && product.rating > 0;
 
@@ -94,12 +106,10 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <p className="text-base font-bold text-blue-700 sm:text-lg">
-            {formatInr(product.price)}
-          </p>
+          <p className="text-base font-bold text-blue-700 sm:text-lg">{formatAmount(product.price)}</p>
           {product.oldPrice ? (
             <p className="text-xs text-slate-400 line-through sm:text-sm">
-              {formatInr(product.oldPrice)}
+              {formatAmount(product.oldPrice)}
             </p>
           ) : null}
         </div>

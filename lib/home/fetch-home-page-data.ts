@@ -6,6 +6,7 @@ import {
   mapToNewArrivalProduct,
 } from "@/lib/home/product-mappers";
 import { listProducts } from "@/lib/services/product-queries";
+import type { CurrencyContext } from "@/lib/services/currency";
 import { defaultProductListQuery } from "@/lib/shop/listing-params";
 import type { ProductListItem } from "@/lib/services/product-queries";
 
@@ -32,7 +33,8 @@ function sliceProducts<T>(items: T[], start: number, count: number): T[] {
 
 function buildHeroSlides(
   topRated: ProductListItem | undefined,
-  latest: ProductListItem | undefined
+  latest: ProductListItem | undefined,
+  currency: CurrencyContext
 ): HeroSlide[] {
   return [
     {
@@ -40,11 +42,11 @@ function buildHeroSlides(
       preTitle: "Top Rated",
       title: topRated?.title ?? "Premium Picks",
       priceText: topRated
-        ? `Starting from ${mapToFeaturedProduct(topRated).price}`
+        ? `Starting from ${mapToFeaturedProduct(topRated, currency).price}`
         : "Shop best rated products",
       bgClassName: "from-slate-900 via-blue-950 to-slate-900",
       imageUrl: topRated
-        ? mapToFeaturedProduct(topRated).imageUrl
+        ? mapToFeaturedProduct(topRated, currency).imageUrl
         : FALLBACK_HERO_IMAGE,
       ctaHref: "/shop?sort=rating",
       exploreHref: "/shop",
@@ -54,11 +56,11 @@ function buildHeroSlides(
       preTitle: "New Arrivals",
       title: latest?.title ?? "Latest Collection",
       priceText: latest
-        ? `Starting from ${mapToNewArrivalProduct(latest).price}`
+        ? `Starting from ${mapToNewArrivalProduct(latest, currency).price}`
         : "Explore the newest products",
       bgClassName: "from-slate-900 via-indigo-950 to-slate-900",
       imageUrl: latest
-        ? mapToNewArrivalProduct(latest).imageUrl
+        ? mapToNewArrivalProduct(latest, currency).imageUrl
         : "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1400&q=80",
       ctaHref: "/shop?sort=latest",
       exploreHref: "/shop",
@@ -79,7 +81,7 @@ const empty: HomePageData = {
  * Loads all homepage product sections in three parallel DB queries.
  * Slices results so sections stay distinct without relying on page-2 offsets.
  */
-export async function fetchHomePageData(): Promise<HomePageData> {
+export async function fetchHomePageData(currency: CurrencyContext): Promise<HomePageData> {
   const base = inStockBase();
 
   try {
@@ -108,14 +110,14 @@ export async function fetchHomePageData(): Promise<HomePageData> {
     const ratedRows = ratedResult.products as ProductListItem[];
     const latestRows = latestResult.products as ProductListItem[];
 
-    const ratedMapped = ratedRows.map((row) => mapToHomeProduct(row));
-    const latestAsNew = latestRows.map((row) => mapToNewArrivalProduct(row));
+    const ratedMapped = ratedRows.map((row) => mapToHomeProduct(row, currency));
+    const latestAsNew = latestRows.map((row) => mapToNewArrivalProduct(row, currency));
     const latestAsTrending = latestRows.map((row) =>
-      mapToHomeProduct(row, "Trending")
+      mapToHomeProduct(row, currency, "Trending")
     );
 
     const topRatedFeatured = sliceProducts(
-      ratedRows.map((row) => mapToFeaturedProduct(row)),
+      ratedRows.map((row) => mapToFeaturedProduct(row, currency)),
       0,
       4
     );
@@ -139,10 +141,10 @@ export async function fetchHomePageData(): Promise<HomePageData> {
         : sliceProducts(latestAsNew, 0, 4);
 
     const catalogProducts = catalogResult.products.map((row) =>
-      mapToHomeProduct(row as ProductListItem)
+      mapToHomeProduct(row as ProductListItem, currency)
     );
 
-    const heroSlides = buildHeroSlides(ratedRows[0], latestRows[0]);
+    const heroSlides = buildHeroSlides(ratedRows[0], latestRows[0], currency);
 
     return {
       bestSellers: bestSellersDistinct.length ? bestSellersDistinct : topRatedFeatured,

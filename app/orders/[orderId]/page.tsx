@@ -17,7 +17,8 @@ import { OrderSummaryCard } from "@/components/orders/order-summary-card";
 import { PaymentSuccessBanner } from "@/components/orders/payment-success-banner";
 import { PaymentsComingSoonNotice } from "@/components/payments/payments-coming-soon-notice";
 import { getSessionUserFromCookies } from "@/lib/auth";
-import { formatInr } from "@/lib/pricing";
+import { getCurrencySymbol } from "@/lib/currency-config";
+import { formatMoney } from "@/lib/money";
 import { isPaymentsEnabled } from "@/lib/payments-config";
 import { getOrderForUser } from "@/lib/services/order";
 import type { OrderStatus } from "@prisma/client";
@@ -79,6 +80,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   const showAwaitingPayment = order.status === "pending_payment";
   const paymentsEnabled = isPaymentsEnabled();
   const address = order.shippingAddress;
+  const currencySymbol = getCurrencySymbol(order.currency);
+  const formatOrderMoney = (amount: number) =>
+    formatMoney(amount, { currencyCode: order.currency, symbol: currencySymbol });
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900">
@@ -125,7 +129,11 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
         ) : null}
 
         {showPaidBanner ? (
-          <PaymentSuccessBanner orderNumber={order.orderNumber} total={order.total} />
+          <PaymentSuccessBanner
+            orderNumber={order.orderNumber}
+            total={order.total}
+            currency={order.currency}
+          />
         ) : null}
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
@@ -154,11 +162,11 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                       <p className="font-semibold text-slate-900">{item.title}</p>
                       <p className="mt-0.5 text-xs text-slate-500">SKU: {item.sku}</p>
                       <p className="mt-2 text-sm text-slate-600">
-                        {formatInr(item.unitPrice)} × {item.quantity}
+                        {formatOrderMoney(item.displayUnitPrice)} × {item.quantity}
                       </p>
                     </div>
                     <p className="shrink-0 text-sm font-semibold text-slate-900">
-                      {formatInr(item.lineTotal)}
+                      {formatOrderMoney(item.displayLineTotal)}
                     </p>
                   </li>
                 ))}
@@ -227,6 +235,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               discount={order.discount}
               total={order.total}
               currency={order.currency}
+              currencySymbol={currencySymbol}
             />
 
             {order.paymentStatus ? (
@@ -252,7 +261,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               <section className="rounded-2xl border border-neutral-200 bg-white p-5">
                 <h2 className="font-semibold text-slate-900">Complete payment</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Total due: {formatInr(order.total)}
+                  Total due: {formatOrderMoney(order.total)}
                 </p>
                 <div className="mt-4 space-y-2">
                   {!paymentsEnabled ? (

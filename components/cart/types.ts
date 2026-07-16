@@ -1,5 +1,3 @@
-import type { PRODUCT_CURRENCY } from "@/lib/pricing";
-
 export type CartItem = {
   id: string;
   productId: string;
@@ -21,7 +19,17 @@ export type CartSummary = {
   discount: number;
   tax: number;
   total: number;
-  currency: typeof PRODUCT_CURRENCY;
+  currency: string;
+  symbol?: string;
+};
+
+export type CartDisplayMeta = {
+  currency: string;
+  symbol: string;
+  rateToInr: number;
+  rateUpdatedAt: string;
+  rateStale: boolean;
+  disclaimer: string;
 };
 
 export const EMPTY_CART_SUMMARY: CartSummary = {
@@ -31,4 +39,5 @@ export const EMPTY_CART_SUMMARY: CartSummary = {
   tax: 0,
   total: 0,
   currency: "INR",
+  symbol: "₹",
 };

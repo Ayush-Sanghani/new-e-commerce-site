@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { ShoppingBag, ArrowRight, CreditCard } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { getSessionUserFromCookies } from "@/lib/auth";
-import { formatInr } from "@/lib/pricing";
+import { getCurrencySymbol } from "@/lib/currency-config";
+import { formatMoney } from "@/lib/money";
 import { isPaymentsEnabled } from "@/lib/payments-config";
 import { listOrdersForUser } from "@/lib/services/order";
 
@@ -81,7 +82,12 @@ export default async function OrdersPage() {
 
                       {/* Right: amount + actions */}
                       <div className="flex flex-col items-end gap-3">
-                        <p className="text-lg font-bold text-slate-900">{formatInr(order.total)}</p>
+                        <p className="text-lg font-bold text-slate-900">
+                          {formatMoney(order.total, {
+                            currencyCode: order.currency,
+                            symbol: getCurrencySymbol(order.currency),
+                          })}
+                        </p>
                         <div className="flex flex-wrap items-center gap-2">
                           {order.status === "pending_payment" ? (
                             paymentsEnabled ? (

@@ -11,7 +11,7 @@ export type AuthRateLimitKind =
   | "verify-email"
   | "resend-verification";
 
-export type ApiRateLimitKind = "cart-mutation" | "profile-update";
+export type ApiRateLimitKind = "cart-mutation" | "profile-update" | "currency-preference";
 
 export type RateLimitKind = AuthRateLimitKind | ApiRateLimitKind;
 
@@ -28,6 +28,7 @@ const LIMITS: Record<
   "resend-verification": { requests: 5, window: "1 h" },
   "cart-mutation": { requests: 60, window: "1 m" },
   "profile-update": { requests: 20, window: "10 m" },
+  "currency-preference": { requests: 30, window: "1 m" },
 };
 
 let redisClient: Redis | null = null;

@@ -6,11 +6,13 @@ import { ShoppingBag } from "lucide-react";
 import { useToast } from "@/components/ui/toast-provider";
 import { ProfileDetailsForm } from "@/components/account/profile-details-form";
 import { AccountPayload, ProfileFormValues } from "@/components/account/types";
-import { formatInr } from "@/lib/pricing";
+import { getCurrencySymbol } from "@/lib/currency-config";
+import { formatMoney } from "@/lib/money";
 
 type LastOrder = {
   orderNumber: string;
   total: number;
+  currency?: string;
   createdAt: string;
   status: string;
 };
@@ -311,7 +313,12 @@ export function AccountPageView() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-slate-800">#{lastOrder.orderNumber}</p>
-                      <p className="font-bold text-blue-700">{formatInr(lastOrder.total)}</p>
+                      <p className="font-bold text-blue-700">
+                        {formatMoney(lastOrder.total, {
+                          currencyCode: lastOrder.currency ?? "INR",
+                          symbol: getCurrencySymbol(lastOrder.currency ?? "INR"),
+                        })}
+                      </p>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs text-slate-500">{formatDate(lastOrder.createdAt)}</p>

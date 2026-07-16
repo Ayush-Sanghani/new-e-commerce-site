@@ -1,7 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { getCurrencyCookieFromRequest } from "@/lib/currency-cookie";
 import { createOrderFromCart, listOrdersForUser } from "@/lib/services/order";
+import { prisma } from "@/lib/db";
+import { resolveDisplayCurrency } from "@/lib/services/currency";
 import { createOrderBodySchema } from "@/lib/validations/order";
 
 /**
@@ -65,11 +68,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { shippingAddress, billingAddress } = parsed.data;
+  const { shippingAddress, billingAddress, currency: bodyCurrency } = parsed.data;
 
   try {
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.id },
+      select: { preferredCurrency: true, country: true },
+    });
+    const resolved = await resolveDisplayCurrency({
+      queryCurrency: bodyCurrency,
+      cookieCurrency: getCurrencyCookieFromRequest(request),
+      preferredCurrency: profile?.preferredCurrency,
+      country: profile?.country,
+      acceptLanguage: request.headers.get("accept-language"),
+    });
+
     const result = await createOrderFromCart({
       userId: user.id,
+      currencyCode: bodyCurrency ?? resolved.code,
       shippingAddress: shippingAddress as Prisma.InputJsonValue | undefined,
       billingAddress: billingAddress as Prisma.InputJsonValue | undefined,
     });
@@ -83,6 +99,29 @@ export async function POST(request: NextRequest) {
               result.error === "empty_cart"
                 ? "Cart is empty. Add items before checkout."
                 : "Cart not found.",
+            data: { code: result.error },
+          },
+          { status: 400 }
+        );
+      }
+
+      if (result.error === "currency_unavailable") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Selected currency is not available. Try INR or refresh rates.",
+            data: { code: result.error },
+          },
+          { status: 400 }
+        );
+      }
+
+      if (result.error === "currency_not_supported_for_payment") {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Selected currency cannot be charged via Razorpay yet. Switch to INR or another supported currency.",
             data: { code: result.error },
           },
           { status: 400 }
@@ -146,6 +185,7 @@ export async function POST(request: NextRequest) {
               code: result.error,
               orderId: result.orderId,
               orderNumber: result.orderNumber,
+              currency: result.currency,
               razorpayOrderId: result.razorpayOrderId,
               amount: result.amount,
               keyId: result.keyId,

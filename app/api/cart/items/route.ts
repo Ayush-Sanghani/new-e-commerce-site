@@ -7,6 +7,7 @@ import {
   removeCartItemFromCart,
   updateCartItemQuantity,
 } from "@/lib/services/cart";
+import { resolveCartCurrencyFromRequest } from "@/lib/services/currency";
 import { addCartItemBodySchema } from "@/lib/validations/cart";
 
 type CartMutationFailure =
@@ -124,6 +125,7 @@ export async function PATCH(request: NextRequest) {
   const { productId, quantity } = parsed.data;
 
   try {
+    const { context } = await resolveCartCurrencyFromRequest(request, user.id);
     const result = await updateCartItemQuantity(user.id, productId.trim(), quantity);
     if (!result.ok) {
       return cartMutationErrorResponse(result, productId);
@@ -132,7 +134,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Cart updated.",
-      data: { cart: buildCartPayload(result.cart) },
+      data: { cart: buildCartPayload(result.cart, context) },
     });
   } catch (err) {
     console.error("PATCH /api/cart/items:", err);
@@ -167,6 +169,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    const { context } = await resolveCartCurrencyFromRequest(request, user.id);
     const result = await removeCartItemFromCart(user.id, productId);
     if (!result.ok) {
       return cartMutationErrorResponse(result, productId);
@@ -175,7 +178,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Item removed from cart.",
-      data: { cart: buildCartPayload(result.cart) },
+      data: { cart: buildCartPayload(result.cart, context) },
     });
   } catch (err) {
     console.error("DELETE /api/cart/items:", err);
@@ -227,6 +230,7 @@ export async function POST(request: NextRequest) {
   const { productId, quantity } = parsed.data;
 
   try {
+    const { context } = await resolveCartCurrencyFromRequest(request, user.id);
     const result = await addItemToCart(user.id, productId.trim(), quantity);
     if (!result.ok) {
       return cartMutationErrorResponse(result, productId);
@@ -235,7 +239,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Item added to cart.",
-      data: { cart: buildCartPayload(result.cart) },
+      data: { cart: buildCartPayload(result.cart, context) },
     });
   } catch (err) {
     console.error("POST /api/cart/items:", err);

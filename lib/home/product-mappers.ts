@@ -1,13 +1,19 @@
 import type { HomeProduct } from "@/components/home/types";
+import { formatCatalogMoney } from "@/lib/catalog-display";
 import { resolveProductImageUrl } from "@/lib/product-image";
 import {
   getUnavailabilityReason,
   isProductPurchasable,
 } from "@/lib/product-availability";
 import type { ProductListItem } from "@/lib/services/product-queries";
-import { formatInr, resolveCatalogPrices } from "@/lib/pricing";
+import type { CurrencyContext } from "@/lib/services/currency";
+import { resolveCatalogPrices } from "@/lib/pricing";
 
-export function mapToHomeProduct(row: ProductListItem, tagOverride?: string): HomeProduct {
+export function mapToHomeProduct(
+  row: ProductListItem,
+  currency: CurrencyContext,
+  tagOverride?: string
+): HomeProduct {
   const listPrice = Number(row.price);
   const discountPercentage = Number(row.discountPercentage ?? 0);
   const { effectivePrice, oldPrice } = resolveCatalogPrices(listPrice, discountPercentage);
@@ -33,8 +39,8 @@ export function mapToHomeProduct(row: ProductListItem, tagOverride?: string): Ho
   return {
     id: row.id,
     title: row.title,
-    price: formatInr(effectivePrice),
-    oldPrice: oldPrice != null ? formatInr(oldPrice) : undefined,
+    price: formatCatalogMoney(effectivePrice, currency),
+    oldPrice: oldPrice != null ? formatCatalogMoney(oldPrice, currency) : undefined,
     tag,
     badge: discountPercentage > 0 ? "Sale" : undefined,
     imageUrl: resolveProductImageUrl(row.thumbnail, row.images),
@@ -45,12 +51,15 @@ export function mapToHomeProduct(row: ProductListItem, tagOverride?: string): Ho
   };
 }
 
-export function mapToFeaturedProduct(row: ProductListItem): HomeProduct {
-  return mapToHomeProduct(row);
+export function mapToFeaturedProduct(row: ProductListItem, currency: CurrencyContext): HomeProduct {
+  return mapToHomeProduct(row, currency);
 }
 
-export function mapToNewArrivalProduct(row: ProductListItem): HomeProduct {
-  const product = mapToHomeProduct(row);
+export function mapToNewArrivalProduct(
+  row: ProductListItem,
+  currency: CurrencyContext
+): HomeProduct {
+  const product = mapToHomeProduct(row, currency);
   return {
     ...product,
     badge: product.discountPercent ? "Sale" : "New",

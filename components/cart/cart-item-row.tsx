@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { Card } from "@/components/home/ui/card";
-import { formatInr } from "@/lib/pricing";
+import { formatMoney } from "@/lib/money";
 import type { CartItem } from "./types";
 
 type CartItemRowProps = {
   item: CartItem;
+  currencyCode?: string;
+  currencySymbol?: string;
   isBusy?: boolean;
   highlighted?: boolean;
   onDecrease: (productId: string) => void;
@@ -15,6 +17,8 @@ type CartItemRowProps = {
 
 export function CartItemRow({
   item,
+  currencyCode = "INR",
+  currencySymbol = "₹",
   isBusy,
   highlighted,
   onDecrease,
@@ -22,6 +26,8 @@ export function CartItemRow({
   onRemove,
 }: CartItemRowProps) {
   const onSale = item.discountPercentage > 0 && item.listPrice > item.unitPrice;
+  const formatAmount = (amount: number) =>
+    formatMoney(amount, { currencyCode, symbol: currencySymbol });
 
   return (
     <Card
@@ -56,9 +62,9 @@ export function CartItemRow({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-slate-700">
               <span className="text-slate-500">Unit: </span>
-              <span className="font-semibold">{formatInr(item.unitPrice)}</span>
+              <span className="font-semibold">{formatAmount(item.unitPrice)}</span>
               {onSale ? (
-                <span className="ml-2 text-slate-400 line-through">{formatInr(item.listPrice)}</span>
+                <span className="ml-2 text-slate-400 line-through">{formatAmount(item.listPrice)}</span>
               ) : null}
             </div>
 
@@ -89,10 +95,10 @@ export function CartItemRow({
 
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold text-blue-700">
-              Line total: {formatInr(item.lineTotal)}
+              Line total: {formatAmount(item.lineTotal)}
               {onSale ? (
                 <span className="ml-2 text-xs font-normal text-slate-400 line-through">
-                  {formatInr(item.listLineTotal)}
+                  {formatAmount(item.listLineTotal)}
                 </span>
               ) : null}
             </div>

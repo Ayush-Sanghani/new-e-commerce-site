@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
+import { CurrencySwitcher } from "@/components/currency/currency-switcher";
 import type { CategoryGroup } from "./types";
 import { AccountDropdown } from "./account-dropdown";
 import { MobileMenu } from "./mobile-menu";
@@ -68,6 +69,7 @@ export function HomeHeader({
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2 xl:ml-4">
               <HeaderSearchMobileTrigger />
+              <CurrencySwitcher compact className="hidden sm:inline-flex" />
               <WishlistNavLink />
               <Link
                 href="/cart"

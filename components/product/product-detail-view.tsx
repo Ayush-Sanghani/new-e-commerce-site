@@ -8,13 +8,15 @@ import { HomeButton } from "@/components/home/ui/button";
 import { Card } from "@/components/home/ui/card";
 import { useToast } from "@/components/ui/toast-provider";
 import { addToCart } from "@/lib/cart-client";
-import { formatInr } from "@/lib/pricing";
+import { formatMoney } from "@/lib/money";
 import { notifyCartUpdated } from "@/lib/cart-sync";
 import type { ProductDetail, RelatedProduct } from "./types";
 
 type ProductDetailViewProps = {
   product: ProductDetail;
   relatedProducts: RelatedProduct[];
+  currencyCode?: string;
+  currencySymbol?: string;
 };
 
 
@@ -43,7 +45,15 @@ function isNegativeInfo(text: string) {
   );
 }
 
-export function ProductDetailView({ product, relatedProducts }: ProductDetailViewProps) {
+export function ProductDetailView({
+  product,
+  relatedProducts,
+  currencyCode = "INR",
+  currencySymbol = "₹",
+}: ProductDetailViewProps) {
+  const formatAmount = (amount: number) =>
+    formatMoney(amount, { currencyCode, symbol: currencySymbol });
+
   const [quantity, setQuantity] = useState(product.minimumOrderQuantity);
   const [isAdding, setIsAdding] = useState(false);
   const { showToast } = useToast();
@@ -150,10 +160,10 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
           </div>
 
           <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-blue-700">{formatInr(product.price)}</p>
+            <p className="text-3xl font-bold text-blue-700">{formatAmount(product.price)}</p>
             {product.oldPrice ? (
               <p className="pb-1 text-sm text-slate-400 line-through">
-                {formatInr(product.oldPrice)}
+                {formatAmount(product.oldPrice)}
               </p>
             ) : null}
           </div>
@@ -395,9 +405,9 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
                   </h4>
                 </Link>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-bold text-blue-700">{formatInr(item.price)}</p>
+                  <p className="text-lg font-bold text-blue-700">{formatAmount(item.price)}</p>
                   {item.oldPrice ? (
-                    <p className="text-sm text-slate-400 line-through">{formatInr(item.oldPrice)}</p>
+                    <p className="text-sm text-slate-400 line-through">{formatAmount(item.oldPrice)}</p>
                   ) : null}
                 </div>
                 <div className="translate-y-2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">

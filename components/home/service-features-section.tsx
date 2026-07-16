@@ -28,7 +28,11 @@ const SERVICE_FEATURES = [
   },
 ];
 
-export function ServiceFeaturesSection() {
+type ServiceFeaturesSectionProps = {
+  currencyCode?: string;
+};
+
+export function ServiceFeaturesSection({ currencyCode = "INR" }: ServiceFeaturesSectionProps) {
   return (
     <SectionContainer>
       <div className="mx-auto w-full max-w-[1500px] px-4 sm:px-6 lg:px-8">
@@ -54,7 +58,8 @@ export function ServiceFeaturesSection() {
         </div>
         <p className="mt-6 flex items-center justify-center gap-2 text-center text-sm text-slate-500">
           <Banknote className="h-4 w-4 text-primary" aria-hidden />
-          All prices in INR • GST included where applicable
+          Prices shown in {currencyCode}
+          {currencyCode !== "INR" ? " (converted from INR)" : ""} • GST included where applicable
         </p>
       </div>
     </SectionContainer>

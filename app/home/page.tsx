@@ -7,8 +7,10 @@ import { ServiceFeaturesSection } from "@/components/home/service-features-secti
 import { SocialProofSection } from "@/components/home/social-proof-section";
 import { TrendingProductsSection } from "@/components/home/trending-products-section";
 import { fetchHomePageData } from "@/lib/home/fetch-home-page-data";
+import { getServerDisplayCurrency } from "@/lib/server-currency";
 
 export default async function HomePage() {
+  const { context } = await getServerDisplayCurrency();
   const {
     bestSellers,
     trendingProducts,
@@ -16,7 +18,7 @@ export default async function HomePage() {
     catalogProducts,
     heroSlides,
     error,
-  } = await fetchHomePageData();
+  } = await fetchHomePageData(context);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 text-slate-900 lg:pb-0">
@@ -34,7 +36,7 @@ export default async function HomePage() {
       <main className="w-full space-y-2 sm:space-y-4">
         <HeroSection slides={heroSlides} />
         <BestSellersSection products={bestSellers} />
-        <ServiceFeaturesSection />
+        <ServiceFeaturesSection currencyCode={context.code} />
         <TrendingProductsSection products={trendingProducts} />
         <SocialProofSection />
         <NewArrivalsSection products={newArrivalProducts} />

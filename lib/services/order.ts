@@ -2,17 +2,63 @@ import { randomBytes } from "node:crypto";
 import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { buildChargeOrderTotals, chargeTotalToMinorUnits } from "@/lib/checkout-fx";
 import { isPaymentsEnabled } from "@/lib/payments-config";
+import { DEFAULT_CURRENCY_CODE } from "@/lib/money";
 import { getRazorpay, getRazorpayKeyId } from "@/lib/razorpay";
 import {
   computeLineTotal,
   computeOrderTotalsFromLines,
   effectiveUnitPriceInr,
-  rupeesToPaise,
 } from "@/lib/pricing";
+import { convertInrToCurrency } from "@/lib/money";
+import { getCurrencyContext } from "@/lib/services/currency";
 
 function decimalToNumber(value: Prisma.Decimal): number {
   return value.toNumber();
+}
+
+async function getCurrencyDecimalDigits(code: string): Promise<number> {
+  if (code === DEFAULT_CURRENCY_CODE) return 2;
+  const currency = await prisma.currency.findUnique({
+    where: { code },
+    select: { decimalDigits: true },
+  });
+  return currency?.decimalDigits ?? 2;
+}
+
+async function resolveCheckoutCurrencyContext(
+  currencyCode: string | null | undefined,
+  paymentsEnabled: boolean
+): Promise<
+  | { ok: true; context: NonNullable<Awaited<ReturnType<typeof getCurrencyContext>>> }
+  | { ok: false; error: "currency_unavailable" | "currency_not_supported_for_payment" }
+> {
+  const requested = currencyCode?.trim().toUpperCase() || DEFAULT_CURRENCY_CODE;
+  const context = await getCurrencyContext(requested);
+
+  if (!context) {
+    if (requested === DEFAULT_CURRENCY_CODE) {
+      return { ok: false, error: "currency_unavailable" };
+    }
+    const inr = await getCurrencyContext(DEFAULT_CURRENCY_CODE);
+    if (!inr) {
+      return { ok: false, error: "currency_unavailable" };
+    }
+    return { ok: true, context: inr };
+  }
+
+  if (paymentsEnabled && requested !== DEFAULT_CURRENCY_CODE) {
+    const currency = await prisma.currency.findFirst({
+      where: { code: requested, isActive: true },
+      select: { isRazorpaySupported: true },
+    });
+    if (!currency?.isRazorpaySupported) {
+      return { ok: false, error: "currency_not_supported_for_payment" };
+    }
+  }
+
+  return { ok: true, context };
 }
 
 export type OrderListRow = {
@@ -35,9 +81,13 @@ export type OrderDetailItemRow = {
   title: string;
   sku: string;
   thumbnail: string | null;
+  /** Catalog snapshot in INR. */
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /** Display amounts in order charge currency (via exchangeRate). */
+  displayUnitPrice: number;
+  displayLineTotal: number;
 };
 
 export type OrderCheckoutFields = {
@@ -57,6 +107,9 @@ export type OrderDetailRow = {
   discount: number;
   total: number;
   currency: string;
+  /** Snapshot: 1 charge-currency unit = X INR. */
+  exchangeRate: number;
+  totalInInr: number;
   createdAt: string;
   updatedAt: string;
   items: OrderDetailItemRow[];
@@ -124,12 +177,16 @@ export async function getOrderForUser(
       : null;
 
   const latestPayment = order.payments[0];
+  const exchangeRate = decimalToNumber(order.exchangeRate);
+  const rate =
+    exchangeRate > 0 ? new Prisma.Decimal(exchangeRate) : new Prisma.Decimal(1);
+  const decimalDigits = await getCurrencyDecimalDigits(order.currency);
   const checkout =
     isPaymentsEnabled() &&
     order.status === OrderStatus.pending_payment &&
     order.razorpayOrderId
       ? {
-          amount: rupeesToPaise(order.total),
+          amount: chargeTotalToMinorUnits(order.total, decimalDigits),
           currency: order.currency,
           razorpayOrderId: order.razorpayOrderId,
           keyId: getRazorpayKeyId(),
@@ -146,18 +203,28 @@ export async function getOrderForUser(
     discount: decimalToNumber(order.discount),
     total: decimalToNumber(order.total),
     currency: order.currency,
+    exchangeRate,
+    totalInInr: decimalToNumber(order.totalInInr),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
-    items: order.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      title: item.title,
-      sku: item.sku,
-      thumbnail: item.thumbnail,
-      unitPrice: decimalToNumber(item.unitPrice),
-      quantity: item.quantity,
-      lineTotal: decimalToNumber(computeLineTotal(item.unitPrice, item.quantity)),
-    })),
+    items: order.items.map((item) => {
+      const unitPrice = decimalToNumber(item.unitPrice);
+      const lineTotal = decimalToNumber(computeLineTotal(item.unitPrice, item.quantity));
+      const displayUnitPrice = convertInrToCurrency(unitPrice, rate, 2).toNumber();
+      const displayLineTotal = convertInrToCurrency(lineTotal, rate, 2).toNumber();
+      return {
+        id: item.id,
+        productId: item.productId,
+        title: item.title,
+        sku: item.sku,
+        thumbnail: item.thumbnail,
+        unitPrice,
+        quantity: item.quantity,
+        lineTotal,
+        displayUnitPrice,
+        displayLineTotal,
+      };
+    }),
     paymentStatus: latestPayment?.status ?? null,
     shippingAddress,
     checkout,
@@ -186,6 +253,8 @@ function generateOrderNumber(): string {
 
 export type CreateOrderFromCartInput = {
   userId: string;
+  /** Preferred charge currency (ISO 4217). Locked at checkout. */
+  currencyCode?: string | null;
   shippingAddress?: Prisma.InputJsonValue;
   billingAddress?: Prisma.InputJsonValue;
 };
@@ -205,6 +274,8 @@ export type CreateOrderFromCartResult =
     }
   | { ok: false; error: "empty_cart" }
   | { ok: false; error: "cart_not_found" }
+  | { ok: false; error: "currency_unavailable" }
+  | { ok: false; error: "currency_not_supported_for_payment" }
   | {
       ok: false;
       error: "insufficient_stock";
@@ -229,6 +300,7 @@ export type CreateOrderFromCartResult =
       error: "pending_order_exists";
       orderId: string;
       orderNumber: string;
+      currency?: string;
       razorpayOrderId?: string;
       amount?: number;
       keyId?: string;
@@ -297,11 +369,25 @@ export async function createOrderFromCart(
     });
   }
 
-  const { subtotal, tax, shipping, discount, total } = computeOrderTotalsFromLines(
+  const inrTotals = computeOrderTotalsFromLines(
     lines.map((line) => ({ lineTotal: line.lineTotal }))
   );
 
-  if (total.lte(0)) {
+  if (inrTotals.total.lte(0)) {
+    return { ok: false, error: "empty_cart" };
+  }
+
+  const paymentsEnabled = isPaymentsEnabled();
+  const currencyResolved = await resolveCheckoutCurrencyContext(
+    input.currencyCode,
+    paymentsEnabled
+  );
+  if (!currencyResolved.ok) {
+    return { ok: false, error: currencyResolved.error };
+  }
+
+  const charge = buildChargeOrderTotals(inrTotals, currencyResolved.context);
+  if (charge.minorUnits < 1) {
     return { ok: false, error: "empty_cart" };
   }
 
@@ -323,23 +409,28 @@ export async function createOrderFromCart(
   });
 
   if (existingPending) {
+    const resumeDigits = await getCurrencyDecimalDigits(existingPending.currency);
     const resumeAmount = existingPending.razorpayOrderId
-      ? rupeesToPaise(existingPending.total)
+      ? chargeTotalToMinorUnits(existingPending.total, resumeDigits)
       : undefined;
+    let keyId: string | undefined;
+    if (existingPending.razorpayOrderId && paymentsEnabled) {
+      try {
+        keyId = getRazorpayKeyId();
+      } catch {
+        keyId = undefined;
+      }
+    }
     return {
       ok: false,
       error: "pending_order_exists",
       orderId: existingPending.id,
       orderNumber: existingPending.orderNumber,
+      currency: existingPending.currency,
       razorpayOrderId: existingPending.razorpayOrderId ?? undefined,
       amount: resumeAmount,
-      keyId: existingPending.razorpayOrderId ? getRazorpayKeyId() : undefined,
+      keyId,
     };
-  }
-
-  const amountPaise = rupeesToPaise(total);
-  if (amountPaise < 1) {
-    return { ok: false, error: "empty_cart" };
   }
 
   const orderNumber = generateOrderNumber();
@@ -350,12 +441,14 @@ export async function createOrderFromCart(
         orderNumber,
         userId: input.userId,
         status: OrderStatus.pending_payment,
-        currency: "INR",
-        subtotal,
-        tax,
-        shipping,
-        discount,
-        total,
+        currency: charge.currency,
+        exchangeRate: charge.exchangeRate,
+        subtotal: charge.subtotal,
+        tax: charge.tax,
+        shipping: charge.shipping,
+        discount: charge.discount,
+        total: charge.total,
+        totalInInr: charge.totalInInr,
         shippingAddress: input.shippingAddress ?? undefined,
         billingAddress: input.billingAddress ?? undefined,
         items: {
@@ -370,8 +463,10 @@ export async function createOrderFromCart(
         },
         payments: {
           create: {
-            amount: total,
-            currency: "INR",
+            amount: charge.total,
+            currency: charge.currency,
+            exchangeRate: charge.exchangeRate,
+            amountInInr: charge.totalInInr,
             status: PaymentStatus.pending,
             provider: "razorpay",
           },
@@ -383,27 +478,29 @@ export async function createOrderFromCart(
     return { orderId: order.id };
   });
 
-  if (!isPaymentsEnabled()) {
+  if (!paymentsEnabled) {
     return {
       ok: true,
       data: {
         orderId,
         orderNumber,
-        currency: "INR",
+        currency: charge.currency,
         paymentsEnabled: false,
       },
     };
   }
 
-  const rz = getRazorpay();
   try {
+    const rz = getRazorpay();
     const receipt = orderNumber.slice(0, 40);
     const rzOrder = await rz.orders.create({
-      amount: amountPaise,
-      currency: "INR",
+      amount: charge.minorUnits,
+      currency: charge.currency,
       receipt,
       notes: {
         internalOrderId: orderId,
+        totalInInr: charge.totalInInr.toFixed(2),
+        exchangeRate: charge.exchangeRate.toFixed(6),
       },
     });
 
@@ -417,8 +514,8 @@ export async function createOrderFromCart(
       data: {
         orderId,
         orderNumber,
-        amount: amountPaise,
-        currency: "INR",
+        amount: charge.minorUnits,
+        currency: charge.currency,
         razorpayOrderId: rzOrder.id,
         keyId: getRazorpayKeyId(),
         paymentsEnabled: true,
@@ -658,7 +755,8 @@ export async function verifyOrderPayment(
   const paymentAmount = Number((payment as { amount?: number }).amount ?? -1);
   const paymentStatus = String((payment as { status?: string }).status ?? "");
   const paymentCaptured = Boolean((payment as { captured?: boolean }).captured);
-  const expectedAmount = rupeesToPaise(order.total);
+  const decimalDigits = await getCurrencyDecimalDigits(order.currency);
+  const expectedAmount = chargeTotalToMinorUnits(order.total, decimalDigits);
 
   const isCapturedLike = paymentStatus === "captured" || paymentCaptured === true;
   if (
@@ -715,7 +813,8 @@ export async function processRazorpayWebhook(
     return { ok: true, ignored: "order_not_found" };
   }
 
-  const expectedAmount = rupeesToPaise(order.total);
+  const expectedDigits = await getCurrencyDecimalDigits(order.currency);
+  const expectedAmount = chargeTotalToMinorUnits(order.total, expectedDigits);
   if (payment.amount !== expectedAmount) {
     return { ok: false, error: "payment_mismatch" };
   }

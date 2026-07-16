@@ -11,7 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "npx tsx scripts/seed-products.ts",
+    "db:seed": "tsx scripts/seed-products.ts",
+    "db:seed:currencies": "tsx scripts/seed-currencies.ts",
+    "db:refresh-rates": "tsx scripts/refresh-exchange-rates.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -44,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

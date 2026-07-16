@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { CurrencySwitcher } from "@/components/currency/currency-switcher";
 import { buildShopUrl } from "@/lib/shop/shop-url";
 import type { CategoryGroup } from "./types";
 
@@ -65,6 +66,12 @@ export function MobileMenu({
           role="menu"
           className="absolute right-0 top-12 z-50 w-[min(100vw-2rem,320px)] rounded-2xl border border-border bg-white p-4 shadow-premium-hover"
         >
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Currency
+            </span>
+            <CurrencySwitcher />
+          </div>
           <nav className="space-y-1 text-sm font-medium">
             <Link
               href="/home"
